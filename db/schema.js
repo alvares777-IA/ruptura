@@ -61,9 +61,15 @@ async function createSchema() {
         endpoint_url    VARCHAR(500),
         endpoint_token  VARCHAR(500),
         query_produto   TEXT,
+        id_bandeira     VARCHAR(50),
         ativo           BOOLEAN NOT NULL DEFAULT true,
         created_at      TIMESTAMP NOT NULL DEFAULT NOW()
       )
+    `);
+
+    // Migracao: adiciona id_bandeira se a tabela ja existia sem o campo
+    await client.query(`
+      ALTER TABLE clientes ADD COLUMN IF NOT EXISTS id_bandeira VARCHAR(50)
     `);
 
     // Permissao Menu

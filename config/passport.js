@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const { pool } = require('./database');
 
 // ---------- Local Strategy ----------
-passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, senha, done) => {
+passport.use(new LocalStrategy({ usernameField: 'email', passwordField: 'senha' }, async (email, senha, done) => {
   try {
     const result = await pool.query(
       'SELECT * FROM usuarios WHERE email = $1 AND ativo = true',

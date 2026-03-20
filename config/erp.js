@@ -6,6 +6,21 @@ const oracledb = require('oracledb');
 const { Pool } = require('pg');
 const mysql = require('mysql2/promise');
 
+// Ativa Thick mode para suporte a versoes antigas do Oracle (< 12c).
+// Requer Oracle Instant Client instalado no servidor.
+try {
+  oracledb.initOracleClient({
+    libDir: process.env.ORACLE_CLIENT_PATH || undefined,
+  });
+  console.log('oracledb: Thick mode ativado.');
+} catch (err) {
+  // Ja inicializado (ex: chamadas multiplas) ou Instant Client nao encontrado
+  if (!err.message.includes('already been called')) {
+    console.warn('oracledb Thick mode nao disponivel:', err.message);
+    console.warn('Verifique se o Oracle Instant Client esta instalado e LD_LIBRARY_PATH configurado.');
+  }
+}
+
 // Cache de pools por id_cliente
 const _pools = {};
 
@@ -39,8 +54,9 @@ async function buscarOracleProduto(cliente, codigo, query) {
       password:         cliente.senha_bd,
       connectString:    buildOracleConnectString(cliente),
     });
-    oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
-    const result = await conn.execute(query, [codigo]);
+    conn.outFormat = oracledb.OUT_FORMAT_OBJECT;
+    const sql = query.trim().replace(/;+$/, '');  // Oracle rejeita ponto-e-virgula no final
+    const result = await conn.execute(sql, [codigo, cliente.id_bandeira || null]);
     if (!result.rows || result.rows.length === 0) return null;
     const row = result.rows[0];
     return {
@@ -71,7 +87,7 @@ async function buscarPostgresProduto(cliente, codigo, query) {
     });
   }
   const pool = _pools[cliente.id_cliente];
-  const result = await pool.query(query.replace(/:\d+/g, '$1'), [codigo]);
+  const result = await pool.query(query.replace(/:\d+/g, '$1'), [codigo, cliente.id_bandeira || null]);
   if (!result.rows || result.rows.length === 0) return null;
   const row = result.rows[0];
   return {
@@ -91,7 +107,7 @@ async function buscarMysqlProduto(cliente, codigo, query) {
   });
   try {
     const mysqlQuery = query.replace(/:\d+/g, '?').replace(/\$\d+/g, '?');
-    const [rows] = await conn.execute(mysqlQuery, [codigo]);
+    const [rows] = await conn.execute(mysqlQuery, [codigo, cliente.id_bandeira || null]);
     if (!rows || rows.length === 0) return null;
     const row = rows[0];
     return {

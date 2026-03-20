@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Edit(\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura/**)",
+      "Write(\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura/**)"
+    ]
+  }
+}

@@ -100,7 +100,8 @@
                 </div>
                 <div class="col-6 col-md-3">
                   <label class="form-label">Senha BD</label>
-                  <input type="password" name="senha_bd" id="cliSenhaBD" class="form-control" autocomplete="new-password">
+                  <input type="password" name="senha_bd" id="cliSenhaBD" class="form-control" autocomplete="new-password"
+                         placeholder="Deixe vazio para manter">
                 </div>
               </div>
             </div>
@@ -119,10 +120,15 @@
               </div>
             </div>
 
-            <div class="col-12">
-              <label class="form-label">Query de busca de produto <small class="text-muted">(use :1 para Oracle, $1 para PG/MySQL)</small></label>
+            <div class="col-12 col-md-4">
+              <label class="form-label">ID Bandeira <small class="text-muted">(parametro :2 / $2)</small></label>
+              <input type="text" name="id_bandeira" id="cliIdBandeira" class="form-control" placeholder="Ex: 1, ATAC, 001">
+            </div>
+
+            <div class="col-12 col-md-8">
+              <label class="form-label">Query de busca de produto <small class="text-muted">(:1/$1 = codigo, :2/$2 = id_bandeira)</small></label>
               <textarea name="query_produto" id="cliQuery" class="form-control font-monospace" rows="2"
-                        placeholder="SELECT DESCRICAO FROM PRODUTOS WHERE CODIGOEAN = :1 AND ROWNUM = 1"></textarea>
+                        placeholder="SELECT DESCRICAO FROM PRODUTOS WHERE CODIGOEAN = :1 AND ID_BANDEIRA = :2 AND ROWNUM = 1"></textarea>
             </div>
           </div>
         </div>
@@ -171,7 +177,8 @@
       document.getElementById('cliSenhaBD').value     = '';
       document.getElementById('cliEndpointUrl').value   = c.endpoint_url || '';
       document.getElementById('cliEndpointToken').value = c.endpoint_token || '';
-      document.getElementById('cliQuery').value       = c.query_produto || '';
+      document.getElementById('cliQuery').value         = c.query_produto || '';
+      document.getElementById('cliIdBandeira').value    = c.id_bandeira || '';
     }
     toggleCampos();
   });

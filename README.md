@@ -75,7 +75,7 @@ sudo systemctl enable nginx
 sudo -u postgres psql
 
 -- Dentro do psql:
-CREATE USER ruptura WITH PASSWORD 'SuaSenhaForte123';
+CREATE USER ruptura WITH PASSWORD 'uss05777';
 CREATE DATABASE ruptura OWNER ruptura;
 GRANT ALL PRIVILEGES ON DATABASE ruptura TO ruptura;
 \q
@@ -107,13 +107,13 @@ sudo systemctl reload postgresql
 ### 3.3 Testar a conexão
 
 ```bash
-psql "postgres://ruptura:SuaSenhaForte123@localhost:5432/ruptura" -c "SELECT version();"
+psql "postgres://ruptura:uss05777@localhost:5432/ruptura" -c "SELECT version();"
 ```
 
 ### 3.4 String de conexão para o .env
 
 ```
-DATABASE_URL=postgres://ruptura:SuaSenhaForte123@localhost:5432/ruptura
+DATABASE_URL=postgres://ruptura:uss05777@localhost:5432/ruptura
 ```
 
 ---
@@ -604,6 +604,26 @@ ruptura/
 | `permissao_cliente` | `(id_cliente, id_usuario)` | Acesso de usuário a cliente |
 | `produtos_coletados` | `(id_cliente, codigo_produto, dt_coleta, id_usuario)` | Registros de coleta |
 
+### Campos da tabela `clientes`
+
+| Coluna | Tipo | Descrição |
+|--------|------|-----------|
+| `id_cliente` | SERIAL PK | Identificador |
+| `nome` | VARCHAR(150) | Nome do cliente |
+| `tipo_conexao` | VARCHAR(20) | `oracle`, `postgres`, `mysql` ou `endpoint` |
+| `host` | VARCHAR(200) | IP ou hostname do servidor do ERP |
+| `porta` | INTEGER | Porta do banco (ex: 1531 Oracle, 5432 PG) |
+| `banco_dados` | VARCHAR(100) | Nome do banco (PG/MySQL) |
+| `schema_bd` | VARCHAR(100) | Schema do banco |
+| `sid` | VARCHAR(100) | SID Oracle |
+| `usuario_bd` | VARCHAR(100) | Usuário de acesso ao ERP |
+| `senha_bd` | VARCHAR(255) | Senha de acesso ao ERP |
+| `endpoint_url` | VARCHAR(500) | URL REST — use `{codigo}` como placeholder |
+| `endpoint_token` | VARCHAR(500) | Bearer token para o endpoint |
+| `query_produto` | TEXT | Query de busca — `:1`/`$1` = código, `:2`/`$2` = id_bandeira |
+| `id_bandeira` | VARCHAR(50) | Valor fixo passado como parâmetro `:2`/`$2` na query |
+| `ativo` | BOOLEAN | Ativa/desativa o cliente no sistema |
+
 ### Upsert de produtos
 
 Quando o mesmo usuário lê o mesmo código no mesmo dia para o mesmo cliente, o registro é **atualizado** (quantidade e timestamp) em vez de duplicado, graças ao `ON CONFLICT DO UPDATE`.
@@ -661,11 +681,13 @@ No desktop o campo de código fica sempre visível para digitação manual. O bo
 
 1. Acesse **Admin > Clientes** → **Novo**
 2. Preencha o tipo de conexão e os dados de acesso
-3. Preencha a **Query de busca de produto**:
-   - Oracle: `SELECT DESCRICAO FROM PRODUTOS WHERE CODIGOEAN = :1 AND ROWNUM = 1`
-   - PostgreSQL/MySQL: `SELECT descricao FROM produtos WHERE codigo_ean = $1 LIMIT 1`
+3. Preencha o **ID Bandeira** (opcional) — valor fixo passado como segundo parâmetro da query (`:2` / `$2`)
+4. Preencha a **Query de busca de produto**:
+   - Oracle: `SELECT DESCRICAO FROM PRODUTOS WHERE CODIGOEAN = :1 AND ID_BANDEIRA = :2 AND ROWNUM = 1`
+   - PostgreSQL/MySQL: `SELECT descricao FROM produtos WHERE codigo_ean = $1 AND id_bandeira = $2 LIMIT 1`
    - Endpoint REST: configure a URL com `{codigo}` como placeholder
-4. Salve e vá em **Admin > Permissões** para liberar o cliente aos usuários necessários
+   - `:1`/`$1` = código EAN/DUN lido em campo; `:2`/`$2` = valor de `id_bandeira` do cadastro do cliente
+5. Salve e vá em **Admin > Permissões** para liberar o cliente aos usuários necessários
 
 ### Campos de conexão por tipo
 
@@ -677,6 +699,7 @@ No desktop o campo de código fica sempre visível para digitação manual. O bo
 | Schema | ✓ | ✓ | — | — |
 | Usuário BD | ✓ | ✓ | ✓ | — |
 | Senha BD | ✓ | ✓ | ✓ | — |
+| ID Bandeira | ✓ | ✓ | ✓ | — |
 | URL endpoint | — | — | — | ✓ |
 | Token | — | — | — | ✓ |
 
@@ -735,6 +758,30 @@ psql -U ruptura -h localhost ruptura < ruptura_20250101.sql
 - Teste a conectividade de rede: `telnet 192.168.70.184 1531`
 - Verifique `LD_LIBRARY_PATH` no ambiente do processo Node.js.
 
+### Erro NJS-138: connections to this database server version are not supported (Thin mode)
+
+O `oracledb` por padrão usa **Thin mode**, que não suporta Oracle 11g e versões anteriores. A aplicação já inicializa o **Thick mode** automaticamente na inicialização, mas isso requer o Oracle Instant Client instalado no servidor.
+
+```bash
+# Verifique se o Instant Client foi encontrado nos logs ao iniciar:
+# "oracledb: Thick mode ativado."
+
+# Se não aparecer, defina o caminho explicitamente no .env:
+ORACLE_CLIENT_PATH=/opt/oracle/instantclient_21_x
+```
+
+### Query Oracle com ponto-e-vírgula (`;`) causa erro
+
+O driver Oracle rejeita queries terminadas com `;`. A aplicação remove o `;` automaticamente antes de executar. Mas ao salvar a query no cadastro do cliente, tanto com quanto sem `;` funciona.
+
+### Erro de login sem mensagem no console ("credenciais inválidas")
+
+Causado por nome de campo de senha incorreto no Passport. O campo do formulário é `senha` e o Passport precisa ser configurado com `passwordField: 'senha'`. Verifique em [config/passport.js](config/passport.js):
+
+```js
+new LocalStrategy({ usernameField: 'email', passwordField: 'senha' }, ...)
+```
+
 ### Tabelas não existem (erro ao iniciar)
 
 ```bash
@@ -765,4 +812,14 @@ sudo systemctl reload nginx
 
 ---
 
-*Documentação gerada em março de 2025.*
+---
+
+## Histórico de Alterações
+
+| Data | Alteração |
+|------|-----------|
+| Mar/2025 | Versão inicial |
+| Mar/2025 | Correção: `passwordField: 'senha'` no Passport (login não funcionava) |
+| Mar/2025 | Campo `id_bandeira` na tabela `clientes` — passado como parâmetro `:2`/`$2` na query do ERP |
+| Mar/2025 | Edição de cliente: campo `senha_bd` não sobrescreve o banco se deixado vazio |
+| Mar/2025 | Oracle: ativado Thick mode para suporte a Oracle < 12c; remoção automática de `;` final na query |
