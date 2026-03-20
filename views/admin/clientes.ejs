@@ -1,0 +1,179 @@
+<% title = 'Clientes'; activeMenu = '/admin/clientes'; %>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h5 class="mb-0 fw-bold"><i class="bi bi-building me-2 text-primary"></i>Clientes / ERPs</h5>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCliente" data-modo="novo">
+    <i class="bi bi-plus-lg me-1"></i> Novo
+  </button>
+</div>
+
+<% if (flash) { %>
+<div class="alert alert-<%= flash.tipo %> py-2 small alert-dismissible fade show">
+  <%= flash.msg %><button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<div class="row g-2">
+  <% clientes.forEach(function(c) { %>
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100 <%= !c.ativo ? 'opacity-50' : '' %>">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-start justify-content-between gap-2">
+          <div class="flex-grow-1">
+            <div class="fw-semibold"><%= c.nome %></div>
+            <div class="small text-muted">
+              <span class="badge bg-secondary me-1"><%= c.tipo_conexao %></span>
+              <% if (c.host) { %><%= c.host %><% if (c.porta) { %>:<%= c.porta %><% } %><% } %>
+              <% if (c.tipo_conexao === 'endpoint' && c.endpoint_url) { %><%= c.endpoint_url.substring(0,40) %>...<% } %>
+            </div>
+            <% if (c.sid) { %>
+            <div class="small text-muted">SID: <%= c.sid %><% if (c.schema_bd) { %> | Schema: <%= c.schema_bd %><% } %></div>
+            <% } %>
+          </div>
+          <div class="d-flex flex-column gap-1">
+            <button class="btn btn-outline-primary btn-sm p-1" title="Editar"
+                    data-bs-toggle="modal" data-bs-target="#modalCliente"
+                    data-modo="editar" data-cliente='<%= JSON.stringify(c) %>'>
+              <i class="bi bi-pencil fs-6"></i>
+            </button>
+            <form action="/admin/clientes/<%= c.id_cliente %>/toggle" method="POST">
+              <button class="btn btn-sm p-1 w-100 <%= c.ativo ? 'btn-outline-warning' : 'btn-outline-success' %>"
+                      title="<%= c.ativo ? 'Desativar' : 'Ativar' %>">
+                <i class="bi <%= c.ativo ? 'bi-pause-circle' : 'bi-play-circle' %> fs-6"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% }); %>
+</div>
+
+<!-- Modal Cliente (novo / editar) -->
+<div class="modal fade" id="modalCliente" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <form id="formCliente" action="/admin/clientes" method="POST">
+        <div class="modal-header">
+          <h6 class="modal-title fw-bold" id="modalClienteTitulo">Novo Cliente</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12 col-md-8">
+              <label class="form-label">Nome do cliente</label>
+              <input type="text" name="nome" id="cliNome" class="form-control" required>
+            </div>
+            <div class="col-12 col-md-4">
+              <label class="form-label">Tipo de conexao</label>
+              <select name="tipo_conexao" id="cliTipo" class="form-select" required>
+                <option value="oracle">Oracle</option>
+                <option value="postgres">PostgreSQL</option>
+                <option value="mysql">MySQL</option>
+                <option value="endpoint">Endpoint REST</option>
+              </select>
+            </div>
+
+            <!-- Campos DB -->
+            <div id="camposDB" class="col-12">
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Host</label>
+                  <input type="text" name="host" id="cliHost" class="form-control" placeholder="192.168.1.100">
+                </div>
+                <div class="col-6 col-md-2">
+                  <label class="form-label">Porta</label>
+                  <input type="number" name="porta" id="cliPorta" class="form-control" placeholder="1521">
+                </div>
+                <div class="col-6 col-md-4">
+                  <label class="form-label">Banco / SID</label>
+                  <input type="text" name="sid" id="cliSid" class="form-control" placeholder="SID ou banco">
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Schema</label>
+                  <input type="text" name="schema_bd" id="cliSchema" class="form-control">
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label">Usuario BD</label>
+                  <input type="text" name="usuario_bd" id="cliUsuarioBD" class="form-control">
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label">Senha BD</label>
+                  <input type="password" name="senha_bd" id="cliSenhaBD" class="form-control" autocomplete="new-password">
+                </div>
+              </div>
+            </div>
+
+            <!-- Campos Endpoint -->
+            <div id="camposEndpoint" class="col-12 d-none">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">URL do endpoint <small class="text-muted">(use {codigo} como placeholder)</small></label>
+                  <input type="text" name="endpoint_url" id="cliEndpointUrl" class="form-control" placeholder="https://api.exemplo.com/produto/{codigo}">
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Token de autenticacao <small class="text-muted">(opcional)</small></label>
+                  <input type="text" name="endpoint_token" id="cliEndpointToken" class="form-control">
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Query de busca de produto <small class="text-muted">(use :1 para Oracle, $1 para PG/MySQL)</small></label>
+              <textarea name="query_produto" id="cliQuery" class="form-control font-monospace" rows="2"
+                        placeholder="SELECT DESCRICAO FROM PRODUTOS WHERE CODIGOEAN = :1 AND ROWNUM = 1"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const modal = document.getElementById('modalCliente');
+  const form  = document.getElementById('formCliente');
+  const tipo  = document.getElementById('cliTipo');
+
+  function toggleCampos() {
+    const isEndpoint = tipo.value === 'endpoint';
+    document.getElementById('camposDB').classList.toggle('d-none', isEndpoint);
+    document.getElementById('camposEndpoint').classList.toggle('d-none', !isEndpoint);
+  }
+
+  tipo.addEventListener('change', toggleCampos);
+
+  modal.addEventListener('show.bs.modal', function(e) {
+    const btn  = e.relatedTarget;
+    const modo = btn.dataset.modo;
+
+    if (modo === 'novo') {
+      document.getElementById('modalClienteTitulo').textContent = 'Novo Cliente';
+      form.action = '/admin/clientes';
+      form.reset();
+    } else {
+      const c = JSON.parse(btn.dataset.cliente);
+      document.getElementById('modalClienteTitulo').textContent = 'Editar Cliente';
+      form.action = '/admin/clientes/' + c.id_cliente;
+      document.getElementById('cliNome').value        = c.nome || '';
+      document.getElementById('cliTipo').value        = c.tipo_conexao || 'oracle';
+      document.getElementById('cliHost').value        = c.host || '';
+      document.getElementById('cliPorta').value       = c.porta || '';
+      document.getElementById('cliSid').value         = c.sid || c.banco_dados || '';
+      document.getElementById('cliSchema').value      = c.schema_bd || '';
+      document.getElementById('cliUsuarioBD').value   = c.usuario_bd || '';
+      document.getElementById('cliSenhaBD').value     = '';
+      document.getElementById('cliEndpointUrl').value   = c.endpoint_url || '';
+      document.getElementById('cliEndpointToken').value = c.endpoint_token || '';
+      document.getElementById('cliQuery').value       = c.query_produto || '';
+    }
+    toggleCampos();
+  });
+})();
+</script>

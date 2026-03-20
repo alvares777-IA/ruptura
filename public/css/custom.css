@@ -1,0 +1,85 @@
+/* ========= Ruptura — Custom CSS ========= */
+
+/* --- Touch targets mínimos para mobile --- */
+.btn { min-height: 44px; }
+.btn-sm { min-height: 36px; }
+.form-control, .form-select { min-height: 44px; }
+.form-control-sm, .form-select-sm { min-height: 36px; }
+
+/* --- Navbar --- */
+.navbar-brand { font-size: 1.15rem; letter-spacing: .02em; }
+
+/* --- Dashboard cards --- */
+.dash-card {
+  transition: transform .15s ease, box-shadow .15s ease;
+  cursor: pointer;
+  border-radius: .75rem !important;
+}
+.dash-card:hover, .dash-card:active {
+  transform: translateY(-3px);
+  box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.12) !important;
+}
+.dash-icon { font-size: 2.5rem; }
+
+/* --- Produto cards --- */
+.produto-card {
+  border-radius: .75rem !important;
+  cursor: pointer;
+  transition: box-shadow .15s;
+}
+.produto-card:hover { box-shadow: 0 .35rem 1rem rgba(0,0,0,.1) !important; }
+
+/* --- Scanner reader --- */
+#reader, #readerLista {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  border-radius: .5rem;
+  overflow: hidden;
+}
+
+/* --- Font monospace para codigos --- */
+.font-monospace { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
+
+/* --- Scrollbar fina (webkit) --- */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: #ced4da; border-radius: 4px; }
+
+/* --- Prevent zoom on input focus iOS --- */
+@media screen and (max-width: 767px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* --- Cards list spacing --- */
+.list-group-item { font-size: .875rem; }
+
+/* --- Sticky bottom em mobile para botao de validar --- */
+@media (max-width: 575px) {
+  #btnValidar {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(13, 110, 253, .35);
+  }
+}
+
+/* --- Badge limpo --- */
+.badge { font-weight: 500; }
+
+/* --- Animacao de entrada de toast --- */
+.toast.show { animation: slideUp .2s ease; }
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* --- Evita overflow horizontal --- */
+body { overflow-x: hidden; }
+.row { margin-left: 0; margin-right: 0; }

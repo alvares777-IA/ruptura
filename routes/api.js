@@ -1,0 +1,153 @@
+const express = require('express');
+const router  = express.Router();
+const { pool } = require('../config/database');
+const { buscarProduto } = require('../config/erp');
+const { requireAuth } = require('../middleware/auth');
+
+router.use(requireAuth);
+
+// POST /api/produtos/validar
+// Valida o codigo no ERP e persiste no banco local
+router.post('/produtos/validar', async (req, res) => {
+  const { id_cliente, codigo, qt_coletada } = req.body;
+
+  if (!id_cliente || !codigo) {
+    return res.status(400).json({ ok: false, msg: 'Informe o cliente e o codigo.' });
+  }
+
+  // Verifica acesso ao cliente
+  if (!req.user.admin) {
+    const check = await pool.query(
+      'SELECT 1 FROM permissao_cliente WHERE id_usuario=$1 AND id_cliente=$2',
+      [req.user.id_usuario, id_cliente]
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ ok: false, msg: 'Sem permissao para este cliente.' });
+    }
+  }
+
+  try {
+    // Busca cliente no banco local
+    const cliQ = await pool.query('SELECT * FROM clientes WHERE id_cliente=$1 AND ativo=true', [id_cliente]);
+    if (cliQ.rows.length === 0) {
+      return res.status(404).json({ ok: false, msg: 'Cliente nao encontrado.' });
+    }
+    const cliente = cliQ.rows[0];
+
+    // Valida no ERP
+    let produto;
+    try {
+      produto = await buscarProduto(cliente, codigo);
+    } catch (erpErr) {
+      console.error('Erro ERP:', erpErr.message);
+      return res.status(502).json({ ok: false, msg: 'Erro ao conectar ao ERP: ' + erpErr.message });
+    }
+
+    if (!produto) {
+      return res.status(404).json({ ok: false, msg: 'Produto nao encontrado no ERP.' });
+    }
+
+    // Persiste no banco local (upsert)
+    const qt = qt_coletada ? parseFloat(qt_coletada) : null;
+    await pool.query(`
+      INSERT INTO produtos_coletados
+        (id_cliente, codigo_produto, dt_coleta, id_usuario, qt_coletada, descricao, erp_validado, erp_dados, updated_at)
+      VALUES ($1,$2,CURRENT_DATE,$3,$4,$5,true,$6,NOW())
+      ON CONFLICT (id_cliente, codigo_produto, dt_coleta, id_usuario)
+      DO UPDATE SET
+        qt_coletada  = EXCLUDED.qt_coletada,
+        descricao    = EXCLUDED.descricao,
+        erp_validado = true,
+        erp_dados    = EXCLUDED.erp_dados,
+        updated_at   = NOW()
+    `, [id_cliente, codigo, req.user.id_usuario, qt, produto.descricao, JSON.stringify(produto.dados)]);
+
+    return res.json({ ok: true, produto });
+  } catch (err) {
+    console.error('Erro ao validar produto:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
+// PUT /api/produtos/quantidade
+// Atualiza a quantidade de um produto ja coletado
+router.put('/produtos/quantidade', async (req, res) => {
+  const { id_cliente, codigo_produto, dt_coleta, id_usuario, qt_coletada } = req.body;
+
+  // Usuario so pode editar o proprio registro (admin pode tudo)
+  const targetUser = req.user.admin ? (id_usuario || req.user.id_usuario) : req.user.id_usuario;
+
+  try {
+    await pool.query(`
+      UPDATE produtos_coletados
+      SET qt_coletada=$1, updated_at=NOW()
+      WHERE id_cliente=$2 AND codigo_produto=$3 AND dt_coleta=$4 AND id_usuario=$5
+    `, [qt_coletada !== '' ? parseFloat(qt_coletada) : null, id_cliente, codigo_produto, dt_coleta, targetUser]);
+
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro ao atualizar quantidade:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
+// GET /api/produtos/lista?id_cliente=&dt_coleta=
+// Retorna lista de produtos coletados (usado pela lista do dia via AJAX)
+router.get('/produtos/lista', async (req, res) => {
+  const { id_cliente, dt_coleta } = req.query;
+  if (!id_cliente) return res.status(400).json({ ok: false, msg: 'Informe o cliente.' });
+
+  // Verifica acesso
+  if (!req.user.admin) {
+    const check = await pool.query(
+      'SELECT 1 FROM permissao_cliente WHERE id_usuario=$1 AND id_cliente=$2',
+      [req.user.id_usuario, id_cliente]
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ ok: false, msg: 'Sem permissao para este cliente.' });
+    }
+  }
+
+  try {
+    const dt = dt_coleta || 'CURRENT_DATE';
+    const q = await pool.query(`
+      SELECT p.*, u.nome as nome_usuario
+      FROM produtos_coletados p
+      JOIN usuarios u ON u.id_usuario = p.id_usuario
+      WHERE p.id_cliente = $1
+        AND p.dt_coleta = ${dt_coleta ? '$2' : 'CURRENT_DATE'}
+        AND ($3 OR p.id_usuario = $4)
+      ORDER BY p.updated_at DESC
+    `, dt_coleta
+      ? [id_cliente, dt_coleta, req.user.admin, req.user.id_usuario]
+      : [id_cliente, req.user.admin, req.user.id_usuario]
+    );
+    return res.json({ ok: true, produtos: q.rows });
+  } catch (err) {
+    console.error('Erro ao buscar lista:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
+// GET /api/produtos/buscar?id_cliente=&codigo=
+// Verifica se o codigo ja foi coletado hoje (usado na lista para atalho por scanner)
+router.get('/produtos/buscar', async (req, res) => {
+  const { id_cliente, codigo } = req.query;
+  if (!id_cliente || !codigo) return res.status(400).json({ ok: false });
+
+  try {
+    const q = await pool.query(`
+      SELECT * FROM produtos_coletados
+      WHERE id_cliente=$1 AND codigo_produto=$2 AND dt_coleta=CURRENT_DATE
+        AND ($3 OR id_usuario=$4)
+      LIMIT 1
+    `, [id_cliente, codigo, req.user.admin, req.user.id_usuario]);
+
+    if (q.rows.length === 0) return res.json({ ok: false, msg: 'Produto nao encontrado na lista de hoje.' });
+    return res.json({ ok: true, produto: q.rows[0] });
+  } catch (err) {
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
+module.exports = router;

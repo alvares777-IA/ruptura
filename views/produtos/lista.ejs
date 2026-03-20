@@ -1,0 +1,288 @@
+<% title = 'Lista do Dia'; activeMenu = '/produtos/lista'; %>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2">
+    <i class="bi bi-list-check text-primary fs-4"></i>
+    <h5 class="mb-0 fw-bold">Lista do Dia</h5>
+  </div>
+  <button class="btn btn-outline-primary btn-sm" id="btnCameraLista" title="Escanear para buscar produto">
+    <i class="bi bi-camera-fill me-1"></i> Escanear
+  </button>
+</div>
+
+<!-- Filtros -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 px-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-12 col-md-6">
+        <label class="form-label small fw-semibold mb-1">Cliente</label>
+        <select id="selCliente" class="form-select form-select-sm">
+          <% clientes.forEach(function(c) { %>
+          <option value="<%= c.id_cliente %>" <%= id_cliente === c.id_cliente ? 'selected' : '' %>><%= c.nome %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="col-6 col-md-3">
+        <label class="form-label small fw-semibold mb-1">Data</label>
+        <input type="date" id="selData" class="form-control form-control-sm"
+               value="<%= new Date().toISOString().split('T')[0] %>">
+      </div>
+      <div class="col-6 col-md-3">
+        <button id="btnFiltrar" class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-search me-1"></i>Filtrar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reader camera (lista) -->
+<div id="readerContainerLista" class="d-none mb-3">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-2">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small text-muted">Aponte para o codigo de barras do produto</span>
+        <button class="btn btn-sm btn-outline-danger" id="btnFecharCameraLista">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div id="readerLista" class="rounded overflow-hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Contador -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <span class="small text-muted"><span id="totalProdutos">0</span> produto(s) encontrado(s)</span>
+</div>
+
+<!-- Lista de cards -->
+<div id="listaProdutos" class="row g-2">
+  <% if (produtos.length === 0) { %>
+  <div class="col-12 text-center text-muted py-5" id="semProdutos">
+    <i class="bi bi-inbox fs-1 opacity-25 d-block mb-2"></i>
+    Nenhum produto coletado hoje para este cliente.
+  </div>
+  <% } %>
+  <% produtos.forEach(function(p) { %>
+  <%- include('_card_produto', { p }) %>
+  <% }); %>
+</div>
+
+<!-- Modal de quantidade -->
+<div class="modal fade" id="modalQtd" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h6 class="modal-title fw-bold mb-0" id="qtdCodigo"></h6>
+          <div class="text-muted small" id="qtdDescricao"></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label fw-semibold">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
+        <input type="number" id="inputQtdModal" class="form-control form-control-lg text-center"
+               min="0" step="0.001" placeholder="0">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnSalvarQtd">
+          <i class="bi bi-floppy me-1"></i>Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="toastLista" class="toast align-items-center text-white border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body small" id="toastListaMsg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="/js/scanner.js"></script>
+<script>
+(function() {
+  let produtoAtual = null;
+  const modalEl  = document.getElementById('modalQtd');
+  const modal    = new bootstrap.Modal(modalEl);
+  const toastEl  = document.getElementById('toastLista');
+  const toast    = new bootstrap.Toast(toastEl, { delay: 2500 });
+
+  function showToast(msg, ok) {
+    document.getElementById('toastListaMsg').textContent = msg;
+    toastEl.className = 'toast align-items-center text-white border-0 ' + (ok ? 'bg-success' : 'bg-danger');
+    toast.show();
+  }
+
+  // ---- Renderizar card a partir de objeto ----
+  function renderCard(p) {
+    const div = document.createElement('div');
+    div.className = 'col-12 col-md-6 col-lg-4';
+    div.id = 'card-' + CSS.escape(p.codigo_produto);
+    div.innerHTML = buildCardHtml(p);
+    return div;
+  }
+
+  function buildCardHtml(p) {
+    const qt = p.qt_coletada !== null && p.qt_coletada !== undefined
+      ? parseFloat(p.qt_coletada).toLocaleString('pt-BR') : '—';
+    return `
+      <div class="card border-0 shadow-sm produto-card h-100"
+           data-codigo="${escHtml(p.codigo_produto)}"
+           data-descricao="${escHtml(p.descricao || '')}"
+           data-id-cliente="${escHtml(String(p.id_cliente))}"
+           data-dt-coleta="${escHtml(String(p.dt_coleta).split('T')[0])}"
+           data-id-usuario="${escHtml(String(p.id_usuario))}"
+           data-qt="${escHtml(String(p.qt_coletada ?? ''))}">
+        <div class="card-body py-2 px-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="flex-grow-1">
+              <div class="fw-semibold font-monospace small">${escHtml(p.codigo_produto)}</div>
+              <div class="text-muted small">${escHtml(p.descricao || '—')}</div>
+              <div class="mt-1">
+                <span class="badge bg-primary bg-opacity-10 text-primary">
+                  <i class="bi bi-layers me-1"></i>Qtd: ${qt}
+                </span>
+                ${p.nome_usuario ? `<span class="badge bg-light text-muted ms-1" style="font-size:.65rem">${escHtml(p.nome_usuario)}</span>` : ''}
+              </div>
+            </div>
+            <button class="btn btn-outline-primary btn-sm p-2 btn-editar-qtd" title="Editar quantidade">
+              <i class="bi bi-pencil-square fs-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ---- Atualizar total ----
+  function atualizarTotal() {
+    document.getElementById('totalProdutos').textContent =
+      document.querySelectorAll('.produto-card').length;
+  }
+  atualizarTotal();
+
+  // ---- Abrir modal ao clicar em editar ----
+  document.getElementById('listaProdutos').addEventListener('click', function(e) {
+    const btn  = e.target.closest('.btn-editar-qtd');
+    const card = e.target.closest('.produto-card');
+    if ((btn || card) && card) abrirModalQtd(card);
+  });
+
+  function abrirModalQtd(card) {
+    produtoAtual = {
+      codigo_produto: card.dataset.codigo,
+      descricao:      card.dataset.descricao,
+      id_cliente:     card.dataset.idCliente,
+      dt_coleta:      card.dataset.dtColeta,
+      id_usuario:     card.dataset.idUsuario,
+      qt_atual:       card.dataset.qt,
+    };
+    document.getElementById('qtdCodigo').textContent    = produtoAtual.codigo_produto;
+    document.getElementById('qtdDescricao').textContent = produtoAtual.descricao;
+    document.getElementById('inputQtdModal').value      = produtoAtual.qt_atual !== 'null' ? produtoAtual.qt_atual : '';
+    modal.show();
+    setTimeout(function() { document.getElementById('inputQtdModal').focus(); }, 400);
+  }
+
+  // ---- Salvar quantidade ----
+  document.getElementById('btnSalvarQtd').addEventListener('click', function() {
+    if (!produtoAtual) return;
+    const qt = document.getElementById('inputQtdModal').value;
+
+    fetch('/api/produtos/quantidade', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_cliente:     produtoAtual.id_cliente,
+        codigo_produto: produtoAtual.codigo_produto,
+        dt_coleta:      produtoAtual.dt_coleta,
+        id_usuario:     produtoAtual.id_usuario,
+        qt_coletada:    qt,
+      }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        // Atualiza card na tela
+        const cardEl = document.getElementById('card-' + CSS.escape(produtoAtual.codigo_produto));
+        if (cardEl) {
+          const cardDiv = cardEl.querySelector('.produto-card');
+          cardDiv.dataset.qt = qt;
+          cardEl.querySelector('.badge.bg-primary').innerHTML =
+            '<i class="bi bi-layers me-1"></i>Qtd: ' +
+            (qt !== '' ? parseFloat(qt).toLocaleString('pt-BR') : '—');
+        }
+        showToast('Quantidade salva.', true);
+        modal.hide();
+      } else {
+        showToast(data.msg, false);
+      }
+    })
+    .catch(function() { showToast('Erro de comunicacao.', false); });
+  });
+
+  // ---- Filtrar lista ----
+  document.getElementById('btnFiltrar').addEventListener('click', carregarLista);
+
+  function carregarLista() {
+    const idCliente = document.getElementById('selCliente').value;
+    const dtColeta  = document.getElementById('selData').value;
+    if (!idCliente) return;
+
+    const lista = document.getElementById('listaProdutos');
+    lista.innerHTML = '<div class="col-12 text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    fetch('/api/produtos/lista?id_cliente=' + idCliente + (dtColeta ? '&dt_coleta=' + dtColeta : ''))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      lista.innerHTML = '';
+      if (!data.ok || data.produtos.length === 0) {
+        lista.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="bi bi-inbox fs-1 opacity-25 d-block mb-2"></i>Nenhum produto encontrado.</div>';
+      } else {
+        data.produtos.forEach(function(p) { lista.appendChild(renderCard(p)); });
+      }
+      atualizarTotal();
+    })
+    .catch(function() { lista.innerHTML = '<div class="col-12 text-danger text-center py-4">Erro ao carregar lista.</div>'; });
+  }
+
+  // ---- Camera na lista (atalho) ----
+  initScanner({
+    btnAbrir:  'btnCameraLista',
+    btnFechar: 'btnFecharCameraLista',
+    container: 'readerContainerLista',
+    readerId:  'readerLista',
+    onDecode: function(codigo) {
+      const idCliente = document.getElementById('selCliente').value;
+      if (!idCliente) { showToast('Selecione um cliente.', false); return; }
+
+      fetch('/api/produtos/buscar?id_cliente=' + idCliente + '&codigo=' + encodeURIComponent(codigo))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          // Rola ate o card e abre modal
+          const cardEl = document.getElementById('card-' + CSS.escape(data.produto.codigo_produto));
+          if (cardEl) {
+            cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(function() { abrirModalQtd(cardEl.querySelector('.produto-card')); }, 400);
+          }
+        } else {
+          showToast(data.msg, false);
+        }
+      })
+      .catch(function() { showToast('Erro ao buscar produto.', false); });
+    },
+  });
+})();
+</script>

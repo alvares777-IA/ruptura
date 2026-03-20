@@ -1,0 +1,123 @@
+<% title = 'Usuarios'; activeMenu = '/admin/usuarios'; %>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h5 class="mb-0 fw-bold"><i class="bi bi-people me-2 text-primary"></i>Usuarios</h5>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovoUsuario">
+    <i class="bi bi-plus-lg me-1"></i> Novo
+  </button>
+</div>
+
+<% if (flash) { %>
+<div class="alert alert-<%= flash.tipo %> py-2 small alert-dismissible fade show">
+  <%= flash.msg %><button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+<% } %>
+
+<!-- Lista de usuarios -->
+<div class="row g-2">
+  <% usuarios.forEach(function(u) { %>
+  <div class="col-12 col-md-6 col-lg-4">
+    <div class="card border-0 shadow-sm h-100 <%= !u.ativo ? 'opacity-50' : '' %>">
+      <div class="card-body py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+          <div class="flex-shrink-0">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                 style="width:40px;height:40px;font-size:.9rem">
+              <%= u.nome.charAt(0).toUpperCase() %>
+            </div>
+          </div>
+          <div class="flex-grow-1 min-width-0">
+            <div class="fw-semibold text-truncate">
+              <%= u.nome %>
+              <% if (u.admin) { %><span class="badge bg-danger ms-1" style="font-size:.65rem">Admin</span><% } %>
+              <% if (!u.ativo) { %><span class="badge bg-secondary ms-1" style="font-size:.65rem">Inativo</span><% } %>
+            </div>
+            <div class="text-muted small text-truncate"><%= u.email %></div>
+          </div>
+          <div class="flex-shrink-0 d-flex gap-1">
+            <!-- Reset senha -->
+            <button class="btn btn-outline-secondary btn-sm p-1" title="Redefinir senha"
+                    data-bs-toggle="modal" data-bs-target="#modalResetSenha"
+                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
+              <i class="bi bi-key fs-6"></i>
+            </button>
+            <!-- Toggle ativo -->
+            <form action="/admin/usuarios/<%= u.id_usuario %>/toggle" method="POST">
+              <button class="btn btn-sm p-1 <%= u.ativo ? 'btn-outline-warning' : 'btn-outline-success' %>"
+                      title="<%= u.ativo ? 'Desativar' : 'Ativar' %>">
+                <i class="bi <%= u.ativo ? 'bi-pause-circle' : 'bi-play-circle' %> fs-6"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% }); %>
+</div>
+
+<!-- Modal Novo Usuario -->
+<div class="modal fade" id="modalNovoUsuario" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form action="/admin/usuarios" method="POST">
+        <div class="modal-header">
+          <h6 class="modal-title fw-bold">Novo Usuario</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nome completo</label>
+            <input type="text" name="nome" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Senha inicial</label>
+            <input type="password" name="senha" class="form-control" required minlength="6">
+          </div>
+          <div class="form-check">
+            <input type="checkbox" name="admin" id="cbAdmin" class="form-check-input">
+            <label class="form-check-label" for="cbAdmin">Administrador</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Criar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reset Senha -->
+<div class="modal fade" id="modalResetSenha" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formResetSenha" action="" method="POST">
+        <div class="modal-header">
+          <h6 class="modal-title fw-bold">Redefinir Senha — <span id="resetNome"></span></h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label">Nova senha</label>
+          <input type="password" name="nova_senha" class="form-control" required minlength="6">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger">Redefinir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('modalResetSenha').addEventListener('show.bs.modal', function(e) {
+    const btn = e.relatedTarget;
+    document.getElementById('resetNome').textContent = btn.dataset.nome;
+    document.getElementById('formResetSenha').action = '/admin/usuarios/' + btn.dataset.id + '/resetsenha';
+  });
+</script>

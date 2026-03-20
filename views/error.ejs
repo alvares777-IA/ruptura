@@ -1,0 +1,12 @@
+<% title = 'Erro ' + code; %>
+
+<div class="row justify-content-center mt-5">
+  <div class="col-12 col-md-6 text-center">
+    <div class="display-1 fw-bold text-primary"><%= code %></div>
+    <p class="fs-5 text-muted mb-4"><%= message %></p>
+    <a href="<%= user ? '/dashboard' : '/login' %>" class="btn btn-primary">
+      <i class="bi bi-arrow-left me-1"></i>
+      <%= user ? 'Voltar ao inicio' : 'Ir para o login' %>
+    </a>
+  </div>
+</div>

@@ -1,0 +1,168 @@
+<% title = 'Permissoes'; activeMenu = '/admin/permissoes'; %>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h5 class="mb-0 fw-bold"><i class="bi bi-shield-check me-2 text-primary"></i>Permissoes</h5>
+</div>
+
+<!-- Seletor de usuario -->
+<div class="card border-0 shadow-sm mb-3">
+  <div class="card-body py-2 px-3">
+    <label class="form-label fw-semibold small mb-1">Selecione o usuario:</label>
+    <select id="selUsuario" class="form-select form-select-sm">
+      <option value="">-- Escolha --</option>
+      <% usuarios.forEach(function(u) { %>
+      <option value="<%= u.id_usuario %>" data-nome="<%= u.nome %>"><%= u.nome %> (<%= u.email %>)</option>
+      <% }); %>
+    </select>
+  </div>
+</div>
+
+<div id="paineisPermissao" class="d-none">
+  <div class="row g-3">
+    <!-- Permissoes de Menu -->
+    <div class="col-12 col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold small py-2">
+          <i class="bi bi-grid me-1 text-primary"></i>Menus
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush" id="listaMenus">
+            <% menus.forEach(function(m) { %>
+            <li class="list-group-item py-2 px-3 d-flex align-items-center justify-content-between"
+                data-id-menu="<%= m.id_menu %>">
+              <span class="small">
+                <i class="bi <%= m.icone %> me-1 text-muted"></i>
+                <% if (m.grupo) { %><span class="text-muted"><%= m.grupo %> /</span> <% } %>
+                <%= m.descricao %>
+              </span>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input perm-menu-toggle" type="checkbox"
+                       data-id-menu="<%= m.id_menu %>" role="switch">
+              </div>
+            </li>
+            <% }); %>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permissoes de Clientes -->
+    <div class="col-12 col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white fw-semibold small py-2">
+          <i class="bi bi-building me-1 text-primary"></i>Clientes
+        </div>
+        <div class="card-body p-0">
+          <ul class="list-group list-group-flush" id="listaClientes">
+            <% clientes.forEach(function(c) { %>
+            <li class="list-group-item py-2 px-3 d-flex align-items-center justify-content-between"
+                data-id-cliente="<%= c.id_cliente %>">
+              <span class="small">
+                <span class="badge bg-secondary me-1" style="font-size:.65rem"><%= c.tipo_conexao %></span>
+                <%= c.nome %>
+              </span>
+              <div class="form-check form-switch mb-0">
+                <input class="form-check-input perm-cliente-toggle" type="checkbox"
+                       data-id-cliente="<%= c.id_cliente %>" role="switch">
+              </div>
+            </li>
+            <% }); %>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast feedback -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="toastPerm" class="toast align-items-center text-white border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body small" id="toastPermMsg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // Dados de permissoes existentes
+  const permMenus   = <%- JSON.stringify(permMenus) %>;
+  const permClientes = <%- JSON.stringify(permClientes) %>;
+  const toastEl = document.getElementById('toastPerm');
+  const toast   = new bootstrap.Toast(toastEl, { delay: 2500 });
+
+  function showToast(msg, ok) {
+    document.getElementById('toastPermMsg').textContent = msg;
+    toastEl.className = 'toast align-items-center text-white border-0 ' + (ok ? 'bg-success' : 'bg-danger');
+    toast.show();
+  }
+
+  function atualizarSwitches(idUsuario) {
+    const menuPerm    = permMenus.filter(p => String(p.id_usuario) === String(idUsuario)).map(p => String(p.id_menu));
+    const clientePerm = permClientes.filter(p => String(p.id_usuario) === String(idUsuario)).map(p => String(p.id_cliente));
+
+    document.querySelectorAll('.perm-menu-toggle').forEach(function(chk) {
+      chk.checked = menuPerm.includes(String(chk.dataset.idMenu));
+    });
+    document.querySelectorAll('.perm-cliente-toggle').forEach(function(chk) {
+      chk.checked = clientePerm.includes(String(chk.dataset.idCliente));
+    });
+  }
+
+  document.getElementById('selUsuario').addEventListener('change', function() {
+    const idUsuario = this.value;
+    const paineis   = document.getElementById('paineisPermissao');
+    if (!idUsuario) { paineis.classList.add('d-none'); return; }
+    paineis.classList.remove('d-none');
+    atualizarSwitches(idUsuario);
+  });
+
+  function togglePerm(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+  }
+
+  document.addEventListener('change', function(e) {
+    const idUsuario = document.getElementById('selUsuario').value;
+    if (!idUsuario) return;
+
+    if (e.target.classList.contains('perm-menu-toggle')) {
+      const idMenu = e.target.dataset.idMenu;
+      const acao   = e.target.checked ? 'grant' : 'revoke';
+      togglePerm('/admin/permissoes/menu', { id_usuario: idUsuario, id_menu: idMenu, acao })
+        .then(function(r) {
+          showToast(r.ok ? 'Permissao atualizada.' : r.msg, r.ok);
+          if (!r.ok) e.target.checked = !e.target.checked;
+          else {
+            if (acao === 'grant') permMenus.push({ id_usuario: idUsuario, id_menu: idMenu });
+            else {
+              const idx = permMenus.findIndex(p => String(p.id_usuario) === idUsuario && String(p.id_menu) === idMenu);
+              if (idx >= 0) permMenus.splice(idx, 1);
+            }
+          }
+        });
+    }
+
+    if (e.target.classList.contains('perm-cliente-toggle')) {
+      const idCliente = e.target.dataset.idCliente;
+      const acao      = e.target.checked ? 'grant' : 'revoke';
+      togglePerm('/admin/permissoes/cliente', { id_usuario: idUsuario, id_cliente: idCliente, acao })
+        .then(function(r) {
+          showToast(r.ok ? 'Permissao atualizada.' : r.msg, r.ok);
+          if (!r.ok) e.target.checked = !e.target.checked;
+          else {
+            if (acao === 'grant') permClientes.push({ id_usuario: idUsuario, id_cliente: idCliente });
+            else {
+              const idx = permClientes.findIndex(p => String(p.id_usuario) === idUsuario && String(p.id_cliente) === idCliente);
+              if (idx >= 0) permClientes.splice(idx, 1);
+            }
+          }
+        });
+    }
+  });
+})();
+</script>
