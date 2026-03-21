@@ -87,4 +87,3 @@ main { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 
 /* --- Evita overflow horizontal --- */
 body { overflow-x: hidden; }
-.container-fluid { overflow-x: hidden; }
