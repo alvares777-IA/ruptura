@@ -20,7 +20,8 @@ router.get('/registro', requireMenu('/produtos/registro'), async (req, res, next
         WHERE pc.id_usuario = $1 AND c.ativo=true ORDER BY c.nome
       `, [req.user.id_usuario]);
     }
-    res.render('produtos/registro', { clientes: clientesQ.rows });
+    const clienteDefault = clientesQ.rows.length === 1 ? clientesQ.rows[0].id_cliente : null;
+    res.render('produtos/registro', { clientes: clientesQ.rows, clienteDefault });
   } catch (err) { next(err); }
 });
 

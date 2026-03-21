@@ -4,6 +4,7 @@ const router  = express.Router();
 const { pool } = require('../config/database');
 const { requireAuth } = require('../middleware/auth');
 const { requireMenu } = require('../middleware/permissions');
+const { notificarAdminsNovoUsuario } = require('../config/email');
 
 // Todos os endpoints de admin exigem autenticacao
 router.use(requireAuth);
@@ -12,8 +13,20 @@ router.use(requireAuth);
 
 router.get('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
-    const result = await pool.query('SELECT id_usuario, nome, email, admin, ativo, created_at FROM usuarios ORDER BY nome');
-    res.render('admin/usuarios', { usuarios: result.rows });
+    const [usuariosQ, menusQ, clientesQ, permMenuQ, permCliQ] = await Promise.all([
+      pool.query('SELECT id_usuario, nome, email, admin, ativo, created_at FROM usuarios ORDER BY nome'),
+      pool.query('SELECT * FROM menus ORDER BY ordem'),
+      pool.query('SELECT * FROM clientes WHERE ativo=true ORDER BY nome'),
+      pool.query('SELECT * FROM permissao_menu'),
+      pool.query('SELECT * FROM permissao_cliente'),
+    ]);
+    res.render('admin/usuarios', {
+      usuarios:     usuariosQ.rows,
+      menus:        menusQ.rows,
+      clientes:     clientesQ.rows,
+      permMenus:    permMenuQ.rows,
+      permClientes: permCliQ.rows,
+    });
   } catch (err) { next(err); }
 });
 
@@ -21,11 +34,12 @@ router.post('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) 
   try {
     const { nome, email, senha, admin: isAdmin } = req.body;
     const hash = await bcrypt.hash(senha, 12);
-    await pool.query(
-      'INSERT INTO usuarios (nome, email, senha, admin) VALUES ($1,$2,$3,$4)',
+    const ins = await pool.query(
+      'INSERT INTO usuarios (nome, email, senha, admin, ativo) VALUES ($1,$2,$3,$4,false) RETURNING *',
       [nome, email.toLowerCase().trim(), hash, isAdmin === 'on']
     );
-    req.session.flash = { tipo: 'success', msg: 'Usuario criado com sucesso.' };
+    notificarAdminsNovoUsuario(ins.rows[0]);
+    req.session.flash = { tipo: 'success', msg: 'Usuario criado. Ele ficara inativo ate ser ativado por um administrador.' };
     res.redirect('/admin/usuarios');
   } catch (err) {
     if (err.code === '23505') {
@@ -49,6 +63,108 @@ router.post('/usuarios/:id/resetsenha', requireMenu('/admin/usuarios'), async (r
     const hash = await bcrypt.hash(nova_senha, 12);
     await pool.query('UPDATE usuarios SET senha=$1 WHERE id_usuario=$2', [hash, req.params.id]);
     req.session.flash = { tipo: 'success', msg: 'Senha alterada.' };
+    res.redirect('/admin/usuarios');
+  } catch (err) { next(err); }
+});
+
+router.put('/usuarios/:id', requireMenu('/admin/usuarios'), async (req, res, next) => {
+  try {
+    const { nome, email, senha, admin: isAdmin, ativo: isAtivo } = req.body;
+    const id = req.params.id;
+
+    // Impede remover o admin flag do ultimo administrador
+    if (isAdmin !== 'on') {
+      const u = await pool.query('SELECT admin FROM usuarios WHERE id_usuario=$1', [id]);
+      if (u.rows[0]?.admin) {
+        const check = await pool.query(
+          'SELECT COUNT(*) FROM usuarios WHERE admin=true AND ativo=true AND id_usuario!=$1', [id]
+        );
+        if (parseInt(check.rows[0].count) === 0) {
+          req.session.flash = { tipo: 'danger', msg: 'Nao e possivel remover o unico administrador.' };
+          return res.redirect('/admin/usuarios');
+        }
+      }
+    }
+
+    if (senha && senha.trim()) {
+      const hash = await bcrypt.hash(senha.trim(), 12);
+      await pool.query(
+        'UPDATE usuarios SET nome=$1, email=$2, senha=$3, admin=$4, ativo=$5 WHERE id_usuario=$6',
+        [nome, email.toLowerCase().trim(), hash, isAdmin === 'on', isAtivo === 'on', id]
+      );
+    } else {
+      await pool.query(
+        'UPDATE usuarios SET nome=$1, email=$2, admin=$3, ativo=$4 WHERE id_usuario=$5',
+        [nome, email.toLowerCase().trim(), isAdmin === 'on', isAtivo === 'on', id]
+      );
+    }
+    req.session.flash = { tipo: 'success', msg: 'Usuario atualizado.' };
+    res.redirect('/admin/usuarios');
+  } catch (err) {
+    if (err.code === '23505') {
+      req.session.flash = { tipo: 'danger', msg: 'Email ja cadastrado.' };
+      return res.redirect('/admin/usuarios');
+    }
+    next(err);
+  }
+});
+
+router.post('/usuarios/:id/toggleadmin', requireMenu('/admin/usuarios'), async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    if (String(id) === String(req.user.id_usuario)) {
+      req.session.flash = { tipo: 'danger', msg: 'Voce nao pode alterar seu proprio status de administrador.' };
+      return res.redirect('/admin/usuarios');
+    }
+    const u = await pool.query('SELECT admin FROM usuarios WHERE id_usuario=$1', [id]);
+    if (u.rows[0]?.admin) {
+      const check = await pool.query(
+        'SELECT COUNT(*) FROM usuarios WHERE admin=true AND ativo=true AND id_usuario!=$1', [id]
+      );
+      if (parseInt(check.rows[0].count) === 0) {
+        req.session.flash = { tipo: 'danger', msg: 'Nao e possivel remover o unico administrador.' };
+        return res.redirect('/admin/usuarios');
+      }
+    }
+    await pool.query('UPDATE usuarios SET admin = NOT admin WHERE id_usuario=$1', [id]);
+    res.redirect('/admin/usuarios');
+  } catch (err) { next(err); }
+});
+
+router.delete('/usuarios/:id', requireMenu('/admin/usuarios'), async (req, res, next) => {
+  const id = req.params.id;
+  try {
+    if (String(id) === String(req.user.id_usuario)) {
+      req.session.flash = { tipo: 'danger', msg: 'Voce nao pode excluir seu proprio usuario.' };
+      return res.redirect('/admin/usuarios');
+    }
+
+    // Impede excluir o ultimo admin ativo
+    const adminCheck = await pool.query(
+      'SELECT COUNT(*) FROM usuarios WHERE admin=true AND ativo=true AND id_usuario != $1', [id]
+    );
+    const usuarioAlvo = await pool.query('SELECT admin FROM usuarios WHERE id_usuario=$1', [id]);
+    if (usuarioAlvo.rows[0]?.admin && parseInt(adminCheck.rows[0].count) === 0) {
+      req.session.flash = { tipo: 'danger', msg: 'Nao e possivel excluir o ultimo administrador.' };
+      return res.redirect('/admin/usuarios');
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM permissao_menu    WHERE id_usuario=$1', [id]);
+      await client.query('DELETE FROM permissao_cliente WHERE id_usuario=$1', [id]);
+      await client.query('DELETE FROM produtos_coletados WHERE id_usuario=$1', [id]);
+      await client.query('DELETE FROM usuarios           WHERE id_usuario=$1', [id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    req.session.flash = { tipo: 'success', msg: 'Usuario excluido com sucesso.' };
     res.redirect('/admin/usuarios');
   } catch (err) { next(err); }
 });
@@ -118,7 +234,9 @@ router.post('/clientes/:id', requireMenu('/admin/clientes'), async (req, res, ne
 
 // ===================== PERMISSOES =====================
 
-router.get('/permissoes', requireMenu('/admin/permissoes'), async (req, res, next) => {
+router.get('/permissoes', (req, res) => res.redirect('/admin/usuarios'));
+
+router.get('/permissoes_old', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const currentUser = req.user;
 
@@ -160,7 +278,7 @@ router.get('/permissoes', requireMenu('/admin/permissoes'), async (req, res, nex
 });
 
 // Toggle permissao menu
-router.post('/permissoes/menu', requireMenu('/admin/permissoes'), async (req, res, next) => {
+router.post('/permissoes/menu', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const { id_usuario, id_menu, acao } = req.body;
 
@@ -191,7 +309,7 @@ router.post('/permissoes/menu', requireMenu('/admin/permissoes'), async (req, re
 });
 
 // Toggle permissao cliente
-router.post('/permissoes/cliente', requireMenu('/admin/permissoes'), async (req, res, next) => {
+router.post('/permissoes/cliente', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const { id_usuario, id_cliente, acao } = req.body;
 

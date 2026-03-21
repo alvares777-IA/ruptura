@@ -22,8 +22,12 @@
     <!-- Permissoes de Menu -->
     <div class="col-12 col-md-6">
       <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white fw-semibold small py-2">
-          <i class="bi bi-grid me-1 text-primary"></i>Menus
+        <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-grid me-1 text-primary"></i>Menus</span>
+          <div class="form-check form-switch mb-0" title="Marcar/desmarcar todos">
+            <input class="form-check-input" type="checkbox" id="toggleTodosMenus" role="switch">
+            <label class="form-check-label small text-muted" for="toggleTodosMenus">Todos</label>
+          </div>
         </div>
         <div class="card-body p-0">
           <ul class="list-group list-group-flush" id="listaMenus">
@@ -49,8 +53,12 @@
     <!-- Permissoes de Clientes -->
     <div class="col-12 col-md-6">
       <div class="card border-0 shadow-sm h-100">
-        <div class="card-header bg-white fw-semibold small py-2">
-          <i class="bi bi-building me-1 text-primary"></i>Clientes
+        <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-building me-1 text-primary"></i>Clientes</span>
+          <div class="form-check form-switch mb-0" title="Marcar/desmarcar todos">
+            <input class="form-check-input" type="checkbox" id="toggleTodosClientes" role="switch">
+            <label class="form-check-label small text-muted" for="toggleTodosClientes">Todos</label>
+          </div>
         </div>
         <div class="card-body p-0">
           <ul class="list-group list-group-flush" id="listaClientes">
@@ -102,12 +110,21 @@
     const menuPerm    = permMenus.filter(p => String(p.id_usuario) === String(idUsuario)).map(p => String(p.id_menu));
     const clientePerm = permClientes.filter(p => String(p.id_usuario) === String(idUsuario)).map(p => String(p.id_cliente));
 
-    document.querySelectorAll('.perm-menu-toggle').forEach(function(chk) {
+    const menuToggles    = document.querySelectorAll('.perm-menu-toggle');
+    const clienteToggles = document.querySelectorAll('.perm-cliente-toggle');
+
+    menuToggles.forEach(function(chk) {
       chk.checked = menuPerm.includes(String(chk.dataset.idMenu));
     });
-    document.querySelectorAll('.perm-cliente-toggle').forEach(function(chk) {
+    clienteToggles.forEach(function(chk) {
       chk.checked = clientePerm.includes(String(chk.dataset.idCliente));
     });
+
+    // Atualiza checkbox "Todos"
+    document.getElementById('toggleTodosMenus').checked =
+      menuToggles.length > 0 && Array.from(menuToggles).every(c => c.checked);
+    document.getElementById('toggleTodosClientes').checked =
+      clienteToggles.length > 0 && Array.from(clienteToggles).every(c => c.checked);
   }
 
   document.getElementById('selUsuario').addEventListener('change', function() {
@@ -144,6 +161,9 @@
               if (idx >= 0) permMenus.splice(idx, 1);
             }
           }
+          const todos = document.querySelectorAll('.perm-menu-toggle');
+          document.getElementById('toggleTodosMenus').checked =
+            todos.length > 0 && Array.from(todos).every(c => c.checked);
         });
     }
 
@@ -161,8 +181,65 @@
               if (idx >= 0) permClientes.splice(idx, 1);
             }
           }
+          const todos = document.querySelectorAll('.perm-cliente-toggle');
+          document.getElementById('toggleTodosClientes').checked =
+            todos.length > 0 && Array.from(todos).every(c => c.checked);
         });
     }
+  });
+
+  // Marcar/desmarcar todos os menus
+  document.getElementById('toggleTodosMenus').addEventListener('change', function() {
+    const idUsuario = document.getElementById('selUsuario').value;
+    if (!idUsuario) { this.checked = false; return; }
+    const marcar = this.checked;
+    document.querySelectorAll('.perm-menu-toggle').forEach(function(chk) { chk.checked = marcar; });
+    // Envia todas as alteracoes em batch
+    const promises = [];
+    document.querySelectorAll('.perm-menu-toggle').forEach(function(chk) {
+      const acao = marcar ? 'grant' : 'revoke';
+      promises.push(togglePerm('/admin/permissoes/menu', { id_usuario: idUsuario, id_menu: chk.dataset.idMenu, acao }));
+    });
+    Promise.all(promises).then(function() {
+      showToast(marcar ? 'Todos os menus liberados.' : 'Todos os menus removidos.', true);
+      // Ressincroniza estado local
+      if (marcar) {
+        document.querySelectorAll('.perm-menu-toggle').forEach(function(chk) {
+          if (!permMenus.find(p => String(p.id_usuario) === idUsuario && String(p.id_menu) === chk.dataset.idMenu))
+            permMenus.push({ id_usuario: idUsuario, id_menu: chk.dataset.idMenu });
+        });
+      } else {
+        for (let i = permMenus.length - 1; i >= 0; i--) {
+          if (String(permMenus[i].id_usuario) === idUsuario) permMenus.splice(i, 1);
+        }
+      }
+    }).catch(function() { showToast('Erro ao atualizar permissoes.', false); });
+  });
+
+  // Marcar/desmarcar todos os clientes
+  document.getElementById('toggleTodosClientes').addEventListener('change', function() {
+    const idUsuario = document.getElementById('selUsuario').value;
+    if (!idUsuario) { this.checked = false; return; }
+    const marcar = this.checked;
+    document.querySelectorAll('.perm-cliente-toggle').forEach(function(chk) { chk.checked = marcar; });
+    const promises = [];
+    document.querySelectorAll('.perm-cliente-toggle').forEach(function(chk) {
+      const acao = marcar ? 'grant' : 'revoke';
+      promises.push(togglePerm('/admin/permissoes/cliente', { id_usuario: idUsuario, id_cliente: chk.dataset.idCliente, acao }));
+    });
+    Promise.all(promises).then(function() {
+      showToast(marcar ? 'Todos os clientes liberados.' : 'Todos os clientes removidos.', true);
+      if (marcar) {
+        document.querySelectorAll('.perm-cliente-toggle').forEach(function(chk) {
+          if (!permClientes.find(p => String(p.id_usuario) === idUsuario && String(p.id_cliente) === chk.dataset.idCliente))
+            permClientes.push({ id_usuario: idUsuario, id_cliente: chk.dataset.idCliente });
+        });
+      } else {
+        for (let i = permClientes.length - 1; i >= 0; i--) {
+          if (String(permClientes[i].id_usuario) === idUsuario) permClientes.splice(i, 1);
+        }
+      }
+    }).catch(function() { showToast('Erro ao atualizar permissoes.', false); });
   });
 })();
 </script>

@@ -14,16 +14,17 @@ Aplicação Node.js responsiva (mobile-first) para registro e gestão de coleta 
 6. [Variáveis de Ambiente (.env)](#6-variáveis-de-ambiente-env)
 7. [Configurar o Oracle Instant Client](#7-configurar-o-oracle-instant-client)
 8. [Configurar "Entrar com Google" (OAuth2)](#8-configurar-entrar-com-google-oauth2)
-9. [Configurar PM2 (processo em produção)](#9-configurar-pm2-processo-em-produção)
-10. [Configurar Nginx como Proxy Reverso](#10-configurar-nginx-como-proxy-reverso)
-11. [Configurar HTTPS com Let's Encrypt](#11-configurar-https-com-lets-encrypt)
-12. [Estrutura do Projeto](#12-estrutura-do-projeto)
-13. [Banco de Dados da Aplicação](#13-banco-de-dados-da-aplicação)
-14. [Sistema de Permissões](#14-sistema-de-permissões)
-15. [Leitura de Códigos de Barras (Câmera)](#15-leitura-de-códigos-de-barras-câmera)
-16. [Adicionar Novos Clientes / ERPs](#16-adicionar-novos-clientes--erps)
-17. [Backup do Banco de Dados](#17-backup-do-banco-de-dados)
-18. [Solução de Problemas](#18-solução-de-problemas)
+9. [Configurar E-mail SMTP (Gmail com App Password)](#9-configurar-e-mail-smtp-gmail-com-app-password)
+10. [Configurar PM2 (processo em produção)](#10-configurar-pm2-processo-em-produção)
+11. [Configurar Nginx como Proxy Reverso](#11-configurar-nginx-como-proxy-reverso)
+12. [Configurar HTTPS com Let's Encrypt](#12-configurar-https-com-lets-encrypt)
+13. [Estrutura do Projeto](#13-estrutura-do-projeto)
+14. [Banco de Dados da Aplicação](#14-banco-de-dados-da-aplicação)
+15. [Sistema de Permissões](#15-sistema-de-permissões)
+16. [Leitura de Códigos de Barras (Câmera)](#16-leitura-de-códigos-de-barras-câmera)
+17. [Adicionar Novos Clientes / ERPs](#17-adicionar-novos-clientes--erps)
+18. [Backup do Banco de Dados](#18-backup-do-banco-de-dados)
+19. [Solução de Problemas](#19-solução-de-problemas)
 
 ---
 
@@ -244,6 +245,12 @@ nano .env
 | `GOOGLE_CLIENT_ID` | não | ID OAuth2 do Google (habilita login com Google) |
 | `GOOGLE_CLIENT_SECRET` | não | Secret OAuth2 do Google |
 | `GOOGLE_CALLBACK_URL` | não | URL de callback do Google (padrão: `/auth/google/callback`) |
+| `SMTP_HOST` | não | Servidor SMTP para envio de e-mails (ex: `smtp.gmail.com`) |
+| `SMTP_PORT` | não | Porta SMTP (padrão: `587`) |
+| `SMTP_SECURE` | não | `true` para SSL na porta 465, `false` para STARTTLS |
+| `SMTP_USER` | não | Usuário/e-mail da conta SMTP |
+| `SMTP_PASS` | não | Senha ou App Password da conta SMTP |
+| `EMAIL_FROM` | não | Remetente dos e-mails (padrão: `noreply@ruptura.local`) |
 | `ADMIN_EMAIL` | não | Email do admin criado pelo seed (padrão: `admin@ruptura.local`) |
 | `ADMIN_SENHA` | não | Senha do admin criado pelo seed (padrão: `Admin@2024`) |
 
@@ -355,13 +362,35 @@ oracledb.getConnection({
 1. **APIs e serviços** → **Credenciais** → **+ Criar credenciais** → **ID do cliente OAuth**
 2. Tipo de aplicativo: **Aplicativo da Web**
 3. Nome: `Ruptura Web`
-4. **URIs de redirecionamento autorizados** — adicione:
+4. **Origens JavaScript autorizadas** — adicione:
+   - Para desenvolvimento: `http://localhost:3000`
+   - Para produção: `https://seudominio.com`
+5. **URIs de redirecionamento autorizados** — adicione:
    - Para desenvolvimento: `http://localhost:3000/auth/google/callback`
    - Para produção: `https://seudominio.com/auth/google/callback`
-5. Clique em **Criar**
-6. Copie o **ID do cliente** e o **Secret do cliente**
+6. Clique em **Criar**
+7. Copie o **ID do cliente** e o **Secret do cliente**
 
-### 8.5 Configurar no .env
+### 8.5 Obter e configurar as credenciais
+
+Após clicar em **Criar**, o Google exibe uma janela com apenas o **ID do cliente**.
+O **Secret do cliente** não aparece nessa tela — obtenha por um dos caminhos abaixo:
+
+**Opção A (mais fácil) — Baixar o JSON:**
+Ainda na janela "Cliente OAuth criado", clique em **Baixar o JSON**.
+O arquivo contém os dois valores:
+```json
+{
+  "client_id": "862354775509-xxxx.apps.googleusercontent.com",
+  "client_secret": "GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx"
+}
+```
+
+**Opção B — Página de detalhes da credencial:**
+Clique em **OK** para fechar → acesse **APIs e serviços** → **Credenciais** →
+clique no **ícone de lápis** na credencial recém-criada → o Secret está visível na página de detalhes.
+
+Preencha os valores no `.env`:
 
 ```
 GOOGLE_CLIENT_ID=123456789-abcdefg.apps.googleusercontent.com
@@ -371,14 +400,49 @@ GOOGLE_CALLBACK_URL=https://seudominio.com/auth/google/callback
 
 ### 8.6 Comportamento no sistema
 
-- Ao logar via Google pela primeira vez, o usuário é **criado automaticamente** com `admin=false` e `ativo=true`.
-- O admin deverá então conceder as permissões necessárias em **Admin > Permissões**.
+- Ao logar via Google pela primeira vez, o usuário é **criado automaticamente** com `admin=false` e `ativo=false` (inativo).
+- Um e-mail é enviado para todos os administradores ativos solicitando a ativação e configuração de permissões.
+- O admin deverá ativar o usuário em **Admin > Usuários** e conceder permissões em **Admin > Permissões**.
 - Se o email já existir no banco (cadastrado manualmente), o `google_id` é vinculado automaticamente.
-- Se `GOOGLE_CLIENT_ID` não estiver no `.env`, o botão "Entrar com Google" não aparece na tela de login.
+- O botão "Entrar com Google" aparece sempre na tela de login.
 
 ---
 
-## 9. Configurar PM2 (processo em produção)
+## 9. Configurar E-mail SMTP (Gmail com App Password)
+
+O sistema envia e-mail para os administradores sempre que um novo usuário se cadastra,
+solicitando ativação e configuração de permissões.
+
+### 9.1 Pré-requisito: ativar verificação em 2 etapas
+
+Acesse [myaccount.google.com](https://myaccount.google.com) → **Segurança** → **Verificação em 2 etapas** → ativar.
+Sem isso, a opção de App Password não aparece.
+
+### 9.2 Gerar o App Password
+
+1. Acesse [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+2. Em **Nome do app**, digite `Ruptura` → clique em **Criar**
+3. O Google gera uma senha de **16 caracteres** (ex: `abcd efgh ijkl mnop`)
+
+> A senha é exibida **apenas uma vez**. Copie imediatamente.
+> Se perder, basta revogar e gerar uma nova no mesmo endereço.
+
+### 9.3 Configurar no .env
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seuemail@gmail.com
+SMTP_PASS=abcdefghijklmnop
+EMAIL_FROM=seuemail@gmail.com
+```
+
+> Cole a senha **sem espaços** — o Google exibe com espaços apenas para facilitar a leitura.
+
+---
+
+## 10. Configurar PM2 (processo em produção)
 
 O PM2 mantém a aplicação rodando em background, reinicia automaticamente em caso de crash e sobe junto com o sistema.
 
@@ -442,7 +506,7 @@ pm2 monit               # monitor interativo
 
 ---
 
-## 10. Configurar Nginx como Proxy Reverso
+## 11. Configurar Nginx como Proxy Reverso
 
 ### 10.1 Criar configuração do site
 
@@ -490,7 +554,7 @@ sudo systemctl reload nginx
 
 ---
 
-## 11. Configurar HTTPS com Let's Encrypt
+## 12. Configurar HTTPS com Let's Encrypt
 
 > **HTTPS é obrigatório em produção** para que a câmera funcione no iOS Safari e Android Chrome.
 
@@ -535,7 +599,7 @@ pm2 reload ruptura
 
 ---
 
-## 12. Estrutura do Projeto
+## 13. Estrutura do Projeto
 
 ```
 ruptura/
@@ -590,7 +654,7 @@ ruptura/
 
 ---
 
-## 13. Banco de Dados da Aplicação
+## 14. Banco de Dados da Aplicação
 
 ### Tabelas
 
@@ -630,7 +694,7 @@ Quando o mesmo usuário lê o mesmo código no mesmo dia para o mesmo cliente, o
 
 ---
 
-## 14. Sistema de Permissões
+## 15. Sistema de Permissões
 
 ### Regras
 
@@ -640,15 +704,32 @@ Quando o mesmo usuário lê o mesmo código no mesmo dia para o mesmo cliente, o
 
 ### Fluxo de configuração de um novo usuário
 
-1. Admin cria o usuário em **Admin > Usuários**
-2. Admin vai em **Admin > Permissões**, seleciona o usuário
-3. Ativa os menus que o usuário pode ver (switches)
-4. Ativa os clientes que o usuário pode acessar (switches)
-5. O usuário já pode logar e verá apenas o que foi liberado
+**Cadastro manual pelo admin:**
+1. Admin cria o usuário em **Admin > Usuários** → botão **Novo**
+2. O usuário é criado como **Inativo** por padrão
+3. Admin clica no ícone de **lápis** (editar) no card do usuário
+4. Na seção **Permissões** do modal, ativa os menus e clientes desejados
+5. Marca o campo **Ativo** e salva — o usuário já pode logar
+
+**Auto-cadastro via Google:**
+1. Usuário clica em **Entrar com Google** — conta criada como **Inativa**
+2. Administradores recebem e-mail automático solicitando ativação
+3. Admin acessa **Admin > Usuários**, clica no ícone de **lápis** do usuário
+4. Configura permissões de menus e clientes, marca **Ativo** e salva
+
+### Ações disponíveis no card de cada usuário
+
+| Ícone | Ação |
+|-------|------|
+| Lápis (azul) | Editar dados, ativo/admin e permissões de menus e clientes |
+| Escudo +/− | Promover ou rebaixar administrador |
+| Play/Pause | Ativar ou desativar o usuário |
+| Chave | Redefinir senha |
+| Lixeira | Excluir usuário e todos os seus dados |
 
 ---
 
-## 15. Leitura de Códigos de Barras (Câmera)
+## 16. Leitura de Códigos de Barras (Câmera)
 
 ### Biblioteca
 
@@ -677,7 +758,7 @@ No desktop o campo de código fica sempre visível para digitação manual. O bo
 
 ---
 
-## 16. Adicionar Novos Clientes / ERPs
+## 17. Adicionar Novos Clientes / ERPs
 
 1. Acesse **Admin > Clientes** → **Novo**
 2. Preencha o tipo de conexão e os dados de acesso
@@ -687,7 +768,7 @@ No desktop o campo de código fica sempre visível para digitação manual. O bo
    - PostgreSQL/MySQL: `SELECT descricao FROM produtos WHERE codigo_ean = $1 AND id_bandeira = $2 LIMIT 1`
    - Endpoint REST: configure a URL com `{codigo}` como placeholder
    - `:1`/`$1` = código EAN/DUN lido em campo; `:2`/`$2` = valor de `id_bandeira` do cadastro do cliente
-5. Salve e vá em **Admin > Permissões** para liberar o cliente aos usuários necessários
+5. Salve e acesse **Admin > Usuários** → ícone de lápis do usuário → seção **Permissões** para liberar o cliente
 
 ### Campos de conexão por tipo
 
@@ -705,7 +786,7 @@ No desktop o campo de código fica sempre visível para digitação manual. O bo
 
 ---
 
-## 17. Backup do Banco de Dados
+## 18. Backup do Banco de Dados
 
 ### Backup manual
 
@@ -740,7 +821,7 @@ psql -U ruptura -h localhost ruptura < ruptura_20250101.sql
 
 ---
 
-## 18. Solução de Problemas
+## 19. Solução de Problemas
 
 ### Câmera não abre no celular
 

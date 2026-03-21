@@ -5,7 +5,9 @@ const router   = express.Router();
 // GET /login
 router.get('/login', (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/dashboard');
-  const erro = req.query.erro || null;
+  const erro = req.query.erro
+    || (req.session.messages && req.session.messages.pop())
+    || null;
   res.render('login', { erro });
 });
 
@@ -30,7 +32,7 @@ router.get('/auth/google', passport.authenticate('google', { scope: ['profile', 
 
 // GET /auth/google/callback
 router.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?erro=Falha+no+login+com+Google.' }),
+  passport.authenticate('google', { failureRedirect: '/login', failureMessage: true }),
   (req, res) => {
     const returnTo = req.session.returnTo || '/dashboard';
     delete req.session.returnTo;

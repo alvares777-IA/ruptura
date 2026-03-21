@@ -12,9 +12,9 @@
     <div class="mb-3">
       <label class="form-label fw-semibold">Cliente</label>
       <select id="selCliente" class="form-select form-select-lg">
-        <option value="">-- Selecione o cliente --</option>
+        <% if (!clienteDefault) { %><option value="">-- Selecione o cliente --</option><% } %>
         <% clientes.forEach(function(c) { %>
-        <option value="<%= c.id_cliente %>"><%= c.nome %></option>
+        <option value="<%= c.id_cliente %>" <%= clienteDefault == c.id_cliente ? 'selected' : '' %>><%= c.nome %></option>
         <% }); %>
       </select>
     </div>
@@ -106,6 +106,9 @@
     document.getElementById('toastErroMsg').textContent = msg;
     toastErro.show();
   }
+
+  // Inicializa estado do botao (cliente pode ja vir pre-selecionado)
+  btnValidar.disabled = !selCliente.value || !inputCodigo.value.trim();
 
   selCliente.addEventListener('change', function() {
     btnValidar.disabled = !this.value || !inputCodigo.value.trim();

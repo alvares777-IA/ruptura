@@ -35,12 +35,23 @@
             <div class="text-muted small text-truncate"><%= u.email %></div>
           </div>
           <div class="flex-shrink-0 d-flex gap-1">
-            <!-- Reset senha -->
-            <button class="btn btn-outline-secondary btn-sm p-1" title="Redefinir senha"
-                    data-bs-toggle="modal" data-bs-target="#modalResetSenha"
-                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
-              <i class="bi bi-key fs-6"></i>
+            <!-- Editar -->
+            <button class="btn btn-outline-primary btn-sm p-1" title="Editar usuario"
+                    data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
+                    data-id="<%= u.id_usuario %>"
+                    data-nome="<%= u.nome %>"
+                    data-email="<%= u.email %>"
+                    data-admin="<%= u.admin %>"
+                    data-ativo="<%= u.ativo %>">
+              <i class="bi bi-pencil fs-6"></i>
             </button>
+            <!-- Promover/Rebaixar admin -->
+            <form action="/admin/usuarios/<%= u.id_usuario %>/toggleadmin" method="POST">
+              <button class="btn btn-sm p-1 <%= u.admin ? 'btn-outline-danger' : 'btn-outline-dark' %>"
+                      title="<%= u.admin ? 'Remover admin' : 'Promover a admin' %>">
+                <i class="bi bi-shield-<%= u.admin ? 'minus' : 'plus' %> fs-6"></i>
+              </button>
+            </form>
             <!-- Toggle ativo -->
             <form action="/admin/usuarios/<%= u.id_usuario %>/toggle" method="POST">
               <button class="btn btn-sm p-1 <%= u.ativo ? 'btn-outline-warning' : 'btn-outline-success' %>"
@@ -48,6 +59,18 @@
                 <i class="bi <%= u.ativo ? 'bi-pause-circle' : 'bi-play-circle' %> fs-6"></i>
               </button>
             </form>
+            <!-- Reset senha -->
+            <button class="btn btn-outline-secondary btn-sm p-1" title="Redefinir senha"
+                    data-bs-toggle="modal" data-bs-target="#modalResetSenha"
+                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
+              <i class="bi bi-key fs-6"></i>
+            </button>
+            <!-- Excluir -->
+            <button class="btn btn-outline-danger btn-sm p-1" title="Excluir usuario"
+                    data-bs-toggle="modal" data-bs-target="#modalExcluirUsuario"
+                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
+              <i class="bi bi-trash fs-6"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -56,7 +79,7 @@
   <% }); %>
 </div>
 
-<!-- Modal Novo Usuario -->
+<!-- ===== Modal Novo Usuario ===== -->
 <div class="modal fade" id="modalNovoUsuario" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -92,7 +115,141 @@
   </div>
 </div>
 
-<!-- Modal Reset Senha -->
+<!-- ===== Modal Editar Usuario ===== -->
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form id="formEditarUsuario" action="" method="POST">
+        <input type="hidden" name="_method" value="PUT">
+        <div class="modal-header">
+          <h6 class="modal-title fw-bold"><i class="bi bi-pencil me-1"></i>Editar Usuario</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- Dados do usuario -->
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Nome completo</label>
+              <input type="text" name="nome" id="editNome" class="form-control" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Email</label>
+              <input type="email" name="email" id="editEmail" class="form-control" required>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label fw-semibold">Nova senha <span class="text-muted fw-normal">(deixe em branco para manter)</span></label>
+              <input type="password" name="senha" class="form-control" minlength="6" autocomplete="new-password">
+            </div>
+            <div class="col-12 col-sm-6 d-flex align-items-end gap-4 pb-1">
+              <div class="form-check">
+                <input type="checkbox" name="admin" id="editAdmin" class="form-check-input">
+                <label class="form-check-label" for="editAdmin">Administrador</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" name="ativo" id="editAtivo" class="form-check-input">
+                <label class="form-check-label" for="editAtivo">Ativo</label>
+              </div>
+            </div>
+          </div>
+
+          <hr class="my-3">
+
+          <!-- Permissoes -->
+          <h6 class="fw-semibold mb-3"><i class="bi bi-shield-check me-1 text-primary"></i>Permissoes</h6>
+          <div class="row g-3">
+            <!-- Menus -->
+            <div class="col-12 col-md-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+                  <span><i class="bi bi-grid me-1 text-primary"></i>Menus</span>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="editToggleTodosMenus" role="switch">
+                    <label class="form-check-label small text-muted" for="editToggleTodosMenus">Todos</label>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <ul class="list-group list-group-flush" id="editListaMenus">
+                    <% menus.forEach(function(m) { %>
+                    <li class="list-group-item py-2 px-3 d-flex align-items-center justify-content-between">
+                      <span class="small">
+                        <i class="bi <%= m.icone %> me-1 text-muted"></i>
+                        <% if (m.grupo) { %><span class="text-muted"><%= m.grupo %> /</span> <% } %>
+                        <%= m.descricao %>
+                      </span>
+                      <div class="form-check form-switch mb-0">
+                        <input class="form-check-input edit-perm-menu" type="checkbox"
+                               data-id-menu="<%= m.id_menu %>" role="switch">
+                      </div>
+                    </li>
+                    <% }); %>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <!-- Clientes -->
+            <div class="col-12 col-md-6">
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+                  <span><i class="bi bi-building me-1 text-primary"></i>Clientes</span>
+                  <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" id="editToggleTodosClientes" role="switch">
+                    <label class="form-check-label small text-muted" for="editToggleTodosClientes">Todos</label>
+                  </div>
+                </div>
+                <div class="card-body p-0">
+                  <ul class="list-group list-group-flush" id="editListaClientes">
+                    <% clientes.forEach(function(c) { %>
+                    <li class="list-group-item py-2 px-3 d-flex align-items-center justify-content-between">
+                      <span class="small">
+                        <span class="badge bg-secondary me-1" style="font-size:.65rem"><%= c.tipo_conexao %></span>
+                        <%= c.nome %>
+                      </span>
+                      <div class="form-check form-switch mb-0">
+                        <input class="form-check-input edit-perm-cliente" type="checkbox"
+                               data-id-cliente="<%= c.id_cliente %>" role="switch">
+                      </div>
+                    </li>
+                    <% }); %>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check2 me-1"></i>Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Excluir Usuario ===== -->
+<div class="modal fade" id="modalExcluirUsuario" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="formExcluirUsuario" action="" method="POST">
+        <div class="modal-header border-0">
+          <h6 class="modal-title fw-bold text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Excluir Usuario</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-1">Tem certeza que deseja excluir o usuario <strong id="excluirNome"></strong>?</p>
+          <p class="text-danger small mb-0"><i class="bi bi-info-circle me-1"></i>Esta acao e irreversivel e remove tambem todas as permissoes e registros de produtos coletados pelo usuario.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash me-1"></i>Excluir</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Modal Reset Senha ===== -->
 <div class="modal fade" id="modalResetSenha" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -114,10 +271,173 @@
   </div>
 </div>
 
+<!-- Toast feedback permissoes -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:11">
+  <div id="toastPerm" class="toast align-items-center text-white border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body small" id="toastPermMsg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
 <script>
+(function() {
+  // Dados de permissoes (todos os usuarios)
+  let permMenus    = <%- JSON.stringify(permMenus) %>;
+  let permClientes = <%- JSON.stringify(permClientes) %>;
+
+  let editIdUsuario = null;
+
+  // --- Toast ---
+  const toastEl = document.getElementById('toastPerm');
+  const toast   = new bootstrap.Toast(toastEl, { delay: 2500 });
+  function showToast(msg, ok) {
+    document.getElementById('toastPermMsg').textContent = msg;
+    toastEl.className = 'toast align-items-center text-white border-0 ' + (ok ? 'bg-success' : 'bg-danger');
+    toast.show();
+  }
+
+  // --- Modal Editar: abrir ---
+  document.getElementById('modalEditarUsuario').addEventListener('show.bs.modal', function(e) {
+    const btn = e.relatedTarget;
+    editIdUsuario = btn.dataset.id;
+
+    document.getElementById('editNome').value  = btn.dataset.nome;
+    document.getElementById('editEmail').value = btn.dataset.email;
+    document.getElementById('editAdmin').checked = btn.dataset.admin === 'true';
+    document.getElementById('editAtivo').checked = btn.dataset.ativo === 'true';
+    document.getElementById('formEditarUsuario').action = '/admin/usuarios/' + editIdUsuario + '?_method=PUT';
+
+    // Marcar permissoes existentes
+    const menuPerm    = permMenus.filter(p => String(p.id_usuario) === editIdUsuario).map(p => String(p.id_menu));
+    const clientePerm = permClientes.filter(p => String(p.id_usuario) === editIdUsuario).map(p => String(p.id_cliente));
+
+    const menuToggles    = document.querySelectorAll('.edit-perm-menu');
+    const clienteToggles = document.querySelectorAll('.edit-perm-cliente');
+
+    menuToggles.forEach(function(chk) {
+      chk.checked = menuPerm.includes(String(chk.dataset.idMenu));
+    });
+    clienteToggles.forEach(function(chk) {
+      chk.checked = clientePerm.includes(String(chk.dataset.idCliente));
+    });
+
+    document.getElementById('editToggleTodosMenus').checked =
+      menuToggles.length > 0 && Array.from(menuToggles).every(c => c.checked);
+    document.getElementById('editToggleTodosClientes').checked =
+      clienteToggles.length > 0 && Array.from(clienteToggles).every(c => c.checked);
+  });
+
+  // --- Funcao AJAX permissao ---
+  function togglePerm(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => r.json());
+  }
+
+  // --- Toggle individual menu ---
+  document.getElementById('editListaMenus').addEventListener('change', function(e) {
+    if (!e.target.classList.contains('edit-perm-menu') || !editIdUsuario) return;
+    const idMenu = e.target.dataset.idMenu;
+    const acao   = e.target.checked ? 'grant' : 'revoke';
+    togglePerm('/admin/permissoes/menu', { id_usuario: editIdUsuario, id_menu: idMenu, acao })
+      .then(function(r) {
+        showToast(r.ok ? 'Permissao atualizada.' : r.msg, r.ok);
+        if (!r.ok) { e.target.checked = !e.target.checked; }
+        else {
+          if (acao === 'grant') permMenus.push({ id_usuario: editIdUsuario, id_menu: idMenu });
+          else {
+            const idx = permMenus.findIndex(p => String(p.id_usuario) === editIdUsuario && String(p.id_menu) === idMenu);
+            if (idx >= 0) permMenus.splice(idx, 1);
+          }
+        }
+        const todos = document.querySelectorAll('.edit-perm-menu');
+        document.getElementById('editToggleTodosMenus').checked =
+          todos.length > 0 && Array.from(todos).every(c => c.checked);
+      });
+  });
+
+  // --- Toggle individual cliente ---
+  document.getElementById('editListaClientes').addEventListener('change', function(e) {
+    if (!e.target.classList.contains('edit-perm-cliente') || !editIdUsuario) return;
+    const idCliente = e.target.dataset.idCliente;
+    const acao      = e.target.checked ? 'grant' : 'revoke';
+    togglePerm('/admin/permissoes/cliente', { id_usuario: editIdUsuario, id_cliente: idCliente, acao })
+      .then(function(r) {
+        showToast(r.ok ? 'Permissao atualizada.' : r.msg, r.ok);
+        if (!r.ok) { e.target.checked = !e.target.checked; }
+        else {
+          if (acao === 'grant') permClientes.push({ id_usuario: editIdUsuario, id_cliente: idCliente });
+          else {
+            const idx = permClientes.findIndex(p => String(p.id_usuario) === editIdUsuario && String(p.id_cliente) === idCliente);
+            if (idx >= 0) permClientes.splice(idx, 1);
+          }
+        }
+        const todos = document.querySelectorAll('.edit-perm-cliente');
+        document.getElementById('editToggleTodosClientes').checked =
+          todos.length > 0 && Array.from(todos).every(c => c.checked);
+      });
+  });
+
+  // --- Marcar/desmarcar todos menus ---
+  document.getElementById('editToggleTodosMenus').addEventListener('change', function() {
+    if (!editIdUsuario) { this.checked = false; return; }
+    const marcar = this.checked;
+    document.querySelectorAll('.edit-perm-menu').forEach(function(chk) { chk.checked = marcar; });
+    const promises = Array.from(document.querySelectorAll('.edit-perm-menu')).map(function(chk) {
+      return togglePerm('/admin/permissoes/menu', { id_usuario: editIdUsuario, id_menu: chk.dataset.idMenu, acao: marcar ? 'grant' : 'revoke' });
+    });
+    Promise.all(promises).then(function() {
+      showToast(marcar ? 'Todos os menus liberados.' : 'Todos os menus removidos.', true);
+      if (marcar) {
+        document.querySelectorAll('.edit-perm-menu').forEach(function(chk) {
+          if (!permMenus.find(p => String(p.id_usuario) === editIdUsuario && String(p.id_menu) === chk.dataset.idMenu))
+            permMenus.push({ id_usuario: editIdUsuario, id_menu: chk.dataset.idMenu });
+        });
+      } else {
+        for (let i = permMenus.length - 1; i >= 0; i--)
+          if (String(permMenus[i].id_usuario) === editIdUsuario) permMenus.splice(i, 1);
+      }
+    }).catch(function() { showToast('Erro ao atualizar permissoes.', false); });
+  });
+
+  // --- Marcar/desmarcar todos clientes ---
+  document.getElementById('editToggleTodosClientes').addEventListener('change', function() {
+    if (!editIdUsuario) { this.checked = false; return; }
+    const marcar = this.checked;
+    document.querySelectorAll('.edit-perm-cliente').forEach(function(chk) { chk.checked = marcar; });
+    const promises = Array.from(document.querySelectorAll('.edit-perm-cliente')).map(function(chk) {
+      return togglePerm('/admin/permissoes/cliente', { id_usuario: editIdUsuario, id_cliente: chk.dataset.idCliente, acao: marcar ? 'grant' : 'revoke' });
+    });
+    Promise.all(promises).then(function() {
+      showToast(marcar ? 'Todos os clientes liberados.' : 'Todos os clientes removidos.', true);
+      if (marcar) {
+        document.querySelectorAll('.edit-perm-cliente').forEach(function(chk) {
+          if (!permClientes.find(p => String(p.id_usuario) === editIdUsuario && String(p.id_cliente) === chk.dataset.idCliente))
+            permClientes.push({ id_usuario: editIdUsuario, id_cliente: chk.dataset.idCliente });
+        });
+      } else {
+        for (let i = permClientes.length - 1; i >= 0; i--)
+          if (String(permClientes[i].id_usuario) === editIdUsuario) permClientes.splice(i, 1);
+      }
+    }).catch(function() { showToast('Erro ao atualizar permissoes.', false); });
+  });
+
+  // --- Modal Reset Senha ---
   document.getElementById('modalResetSenha').addEventListener('show.bs.modal', function(e) {
     const btn = e.relatedTarget;
     document.getElementById('resetNome').textContent = btn.dataset.nome;
     document.getElementById('formResetSenha').action = '/admin/usuarios/' + btn.dataset.id + '/resetsenha';
   });
+
+  // --- Modal Excluir ---
+  document.getElementById('modalExcluirUsuario').addEventListener('show.bs.modal', function(e) {
+    const btn = e.relatedTarget;
+    document.getElementById('excluirNome').textContent = btn.dataset.nome;
+    document.getElementById('formExcluirUsuario').action = '/admin/usuarios/' + btn.dataset.id + '?_method=DELETE';
+  });
+})();
 </script>
