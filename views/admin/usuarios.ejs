@@ -19,8 +19,8 @@
   <div class="col-12 col-md-6 col-lg-4">
     <div class="card border-0 shadow-sm h-100 <%= !u.ativo ? 'opacity-50' : '' %>">
       <div class="card-body py-2 px-3">
-        <div class="d-flex align-items-center gap-2">
-          <div class="flex-shrink-0">
+        <div class="d-flex align-items-start gap-2">
+          <div class="flex-shrink-0 mt-1">
             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
                  style="width:40px;height:40px;font-size:.9rem">
               <%= u.nome.charAt(0).toUpperCase() %>
@@ -32,45 +32,45 @@
               <% if (u.admin) { %><span class="badge bg-danger ms-1" style="font-size:.65rem">Admin</span><% } %>
               <% if (!u.ativo) { %><span class="badge bg-secondary ms-1" style="font-size:.65rem">Inativo</span><% } %>
             </div>
-            <div class="text-muted small text-truncate"><%= u.email %></div>
-          </div>
-          <div class="flex-shrink-0 d-flex gap-1">
-            <!-- Editar -->
-            <button class="btn btn-outline-primary btn-sm p-1" title="Editar usuario"
-                    data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
-                    data-id="<%= u.id_usuario %>"
-                    data-nome="<%= u.nome %>"
-                    data-email="<%= u.email %>"
-                    data-admin="<%= u.admin %>"
-                    data-ativo="<%= u.ativo %>">
-              <i class="bi bi-pencil fs-6"></i>
-            </button>
-            <!-- Promover/Rebaixar admin -->
-            <form action="/admin/usuarios/<%= u.id_usuario %>/toggleadmin" method="POST">
-              <button class="btn btn-sm p-1 <%= u.admin ? 'btn-outline-danger' : 'btn-outline-dark' %>"
-                      title="<%= u.admin ? 'Remover admin' : 'Promover a admin' %>">
-                <i class="bi bi-shield-<%= u.admin ? 'minus' : 'plus' %> fs-6"></i>
+            <div class="text-muted small text-truncate mb-2"><%= u.email %></div>
+            <div class="d-flex flex-wrap gap-1">
+              <!-- Editar -->
+              <button class="btn btn-outline-primary btn-sm btn-icon" title="Editar usuario"
+                      data-bs-toggle="modal" data-bs-target="#modalEditarUsuario"
+                      data-id="<%= u.id_usuario %>"
+                      data-nome="<%= u.nome %>"
+                      data-email="<%= u.email %>"
+                      data-admin="<%= u.admin %>"
+                      data-ativo="<%= u.ativo %>">
+                <i class="bi bi-pencil"></i>
               </button>
-            </form>
-            <!-- Toggle ativo -->
-            <form action="/admin/usuarios/<%= u.id_usuario %>/toggle" method="POST">
-              <button class="btn btn-sm p-1 <%= u.ativo ? 'btn-outline-warning' : 'btn-outline-success' %>"
-                      title="<%= u.ativo ? 'Desativar' : 'Ativar' %>">
-                <i class="bi <%= u.ativo ? 'bi-pause-circle' : 'bi-play-circle' %> fs-6"></i>
+              <!-- Promover/Rebaixar admin -->
+              <form action="/admin/usuarios/<%= u.id_usuario %>/toggleadmin" method="POST">
+                <button class="btn btn-sm btn-icon <%= u.admin ? 'btn-outline-danger' : 'btn-outline-dark' %>"
+                        title="<%= u.admin ? 'Remover admin' : 'Promover a admin' %>">
+                  <i class="bi bi-shield-<%= u.admin ? 'minus' : 'plus' %>"></i>
+                </button>
+              </form>
+              <!-- Toggle ativo -->
+              <form action="/admin/usuarios/<%= u.id_usuario %>/toggle" method="POST">
+                <button class="btn btn-sm btn-icon <%= u.ativo ? 'btn-outline-warning' : 'btn-outline-success' %>"
+                        title="<%= u.ativo ? 'Desativar' : 'Ativar' %>">
+                  <i class="bi <%= u.ativo ? 'bi-pause-circle' : 'bi-play-circle' %>"></i>
+                </button>
+              </form>
+              <!-- Reset senha -->
+              <button class="btn btn-outline-secondary btn-sm btn-icon" title="Redefinir senha"
+                      data-bs-toggle="modal" data-bs-target="#modalResetSenha"
+                      data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
+                <i class="bi bi-key"></i>
               </button>
-            </form>
-            <!-- Reset senha -->
-            <button class="btn btn-outline-secondary btn-sm p-1" title="Redefinir senha"
-                    data-bs-toggle="modal" data-bs-target="#modalResetSenha"
-                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
-              <i class="bi bi-key fs-6"></i>
-            </button>
-            <!-- Excluir -->
-            <button class="btn btn-outline-danger btn-sm p-1" title="Excluir usuario"
-                    data-bs-toggle="modal" data-bs-target="#modalExcluirUsuario"
-                    data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
-              <i class="bi bi-trash fs-6"></i>
-            </button>
+              <!-- Excluir -->
+              <button class="btn btn-outline-danger btn-sm btn-icon" title="Excluir usuario"
+                      data-bs-toggle="modal" data-bs-target="#modalExcluirUsuario"
+                      data-id="<%= u.id_usuario %>" data-nome="<%= u.nome %>">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>

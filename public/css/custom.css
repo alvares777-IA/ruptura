@@ -3,8 +3,13 @@
 /* --- Touch targets mínimos para mobile --- */
 .btn { min-height: 44px; }
 .btn-sm { min-height: 36px; }
+.btn-icon { min-width: 36px; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; }
 .form-control, .form-select { min-height: 44px; }
 .form-control-sm, .form-select-sm { min-height: 36px; }
+
+/* --- Safe area insets (notch / barra de navegacao Android) --- */
+main { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+.position-fixed.bottom-0 { padding-bottom: max(.75rem, env(safe-area-inset-bottom)) !important; }
 
 /* --- Navbar --- */
 .navbar-brand { font-size: 1.15rem; letter-spacing: .02em; }
@@ -82,4 +87,4 @@
 
 /* --- Evita overflow horizontal --- */
 body { overflow-x: hidden; }
-.row { margin-left: 0; margin-right: 0; }
+.container-fluid { overflow-x: hidden; }
