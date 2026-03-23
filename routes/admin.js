@@ -33,7 +33,7 @@ router.get('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) =
 router.post('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const { nome, email, senha, admin: isAdmin } = req.body;
-    const hash = await bcrypt.hash(senha, 12);
+    const hash = await bcrypt.hash(senha.trim().toLowerCase(), 12);
     const ins = await pool.query(
       'INSERT INTO usuarios (nome, email, senha, admin, ativo) VALUES ($1,$2,$3,$4,false) RETURNING *',
       [nome, email.toLowerCase().trim(), hash, isAdmin === 'on']
@@ -60,7 +60,7 @@ router.post('/usuarios/:id/toggle', requireMenu('/admin/usuarios'), async (req, 
 router.post('/usuarios/:id/resetsenha', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const { nova_senha } = req.body;
-    const hash = await bcrypt.hash(nova_senha, 12);
+    const hash = await bcrypt.hash(nova_senha.trim().toLowerCase(), 12);
     await pool.query('UPDATE usuarios SET senha=$1 WHERE id_usuario=$2', [hash, req.params.id]);
     req.session.flash = { tipo: 'success', msg: 'Senha alterada.' };
     res.redirect('/admin/usuarios');
@@ -87,7 +87,7 @@ router.put('/usuarios/:id', requireMenu('/admin/usuarios'), async (req, res, nex
     }
 
     if (senha && senha.trim()) {
-      const hash = await bcrypt.hash(senha.trim(), 12);
+      const hash = await bcrypt.hash(senha.trim().toLowerCase(), 12);
       await pool.query(
         'UPDATE usuarios SET nome=$1, email=$2, senha=$3, admin=$4, ativo=$5 WHERE id_usuario=$6',
         [nome, email.toLowerCase().trim(), hash, isAdmin === 'on', isAtivo === 'on', id]

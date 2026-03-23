@@ -19,7 +19,7 @@ passport.use(new LocalStrategy({ usernameField: 'email', passwordField: 'senha' 
     if (!user.senha) {
       return done(null, false, { message: 'Use o login com Google para esta conta.' });
     }
-    const ok = await bcrypt.compare(senha, user.senha);
+    const ok = await bcrypt.compare(senha.trim().toLowerCase(), user.senha);
     if (!ok) return done(null, false, { message: 'Email ou senha incorretos.' });
     return done(null, user);
   } catch (err) {

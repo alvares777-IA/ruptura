@@ -16,7 +16,11 @@
       "\\home\\marcelo\\ruptura\\config",
       "\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura\\config",
       "\\home\\marcelo\\ruptura",
-      "\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura"
+      "\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura",
+      "\\home\\marcelo\\ruptura\\routes",
+      "\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura\\routes",
+      "\\home\\marcelo\\ruptura\\db",
+      "\\\\wsl.localhost\\Ubuntu\\home\\marcelo\\ruptura\\db"
     ]
   }
 }

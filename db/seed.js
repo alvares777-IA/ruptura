@@ -10,7 +10,7 @@ async function seed() {
     // Admin user
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@ruptura.local';
     const adminSenha = process.env.ADMIN_SENHA || 'Admin@2024';
-    const hash = await bcrypt.hash(adminSenha, 12);
+    const hash = await bcrypt.hash(adminSenha.trim().toLowerCase(), 12);
 
     await client.query(`
       INSERT INTO usuarios (nome, email, senha, admin, ativo)
