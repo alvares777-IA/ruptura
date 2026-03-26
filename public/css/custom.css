@@ -37,10 +37,27 @@ main { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 /* --- Scanner reader --- */
 #reader, #readerLista {
   width: 100%;
-  max-width: 420px;
+  max-width: 100%;
   margin: 0 auto;
   border-radius: .5rem;
   overflow: hidden;
+}
+
+/* Linha animada de scan (modo nativo BarcodeDetector) */
+.scanner-linha {
+  position: absolute;
+  left: 5%;
+  width: 90%;
+  height: 2px;
+  background: rgba(13, 110, 253, .85);
+  border-radius: 1px;
+  box-shadow: 0 0 6px rgba(13, 110, 253, .6);
+  animation: scanLine 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes scanLine {
+  0%, 100% { top: 20%; }
+  50%       { top: 80%; }
 }
 
 /* --- Font monospace para codigos --- */
