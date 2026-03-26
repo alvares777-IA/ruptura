@@ -65,6 +65,36 @@ sudo apt install -y nginx
 sudo systemctl enable nginx
 ```
 
+```bash
+# Oracle Linux 9 / RHEL 9 / Rocky Linux 9 / AlmaLinux 9
+sudo dnf update -y
+sudo dnf install -y curl git gcc-c++ make unzip
+
+# Node.js 20 LTS via NodeSource
+curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+sudo dnf install -y nodejs
+node -v   # deve mostrar v20.x.x
+npm -v
+
+# PostgreSQL 16 (repositório oficial PGDG)
+sudo dnf install -y https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+sudo dnf -qy module disable postgresql   # desativa o módulo padrão do distro
+sudo dnf install -y postgresql16-server postgresql16-contrib
+sudo /usr/pgsql-16/bin/postgresql-16-setup initdb
+sudo systemctl enable postgresql-16
+sudo systemctl start postgresql-16
+
+# Nginx (proxy reverso)
+sudo dnf install -y nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+
+# Firewall: liberar HTTP e HTTPS
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --reload
+```
+
 ---
 
 ## 3. Configurar o PostgreSQL Local
@@ -88,7 +118,11 @@ Por padrão o PostgreSQL exige autenticação por peer para conexões locais.
 Para que a aplicação Node.js conecte via senha (md5/scram), verifique o arquivo:
 
 ```bash
+# Ubuntu / Debian
 sudo nano /etc/postgresql/16/main/pg_hba.conf
+
+# Oracle Linux 9 / RHEL 9
+sudo nano /var/lib/pgsql/16/data/pg_hba.conf
 ```
 
 Certifique-se de que a linha referente a conexões locais via TCP use `scram-sha-256` ou `md5`:
@@ -124,7 +158,11 @@ DATABASE_URL=postgres://ruptura:uss05777@localhost:5432/ruptura
 ### 4.1 Instalar e configurar identidade
 
 ```bash
+# Ubuntu / Debian
 sudo apt install -y git
+
+# Oracle Linux 9 / RHEL 9
+sudo dnf install -y git
 
 git config --global user.name  "Seu Nome"
 git config --global user.email "seu@email.com"
@@ -303,7 +341,11 @@ ls /opt/oracle/instantclient_21_x/
 ### 7.3 Dependência libaio
 
 ```bash
+# Ubuntu / Debian
 sudo apt install -y libaio1
+
+# Oracle Linux 9 / RHEL 9
+sudo dnf install -y libaio
 ```
 
 ### 7.4 Variável de ambiente (opcional)
@@ -510,11 +552,13 @@ pm2 monit               # monitor interativo
 
 ### 10.1 Criar configuração do site
 
+**Ubuntu / Debian** — usa `sites-available` + `sites-enabled`:
+
 ```bash
 sudo nano /etc/nginx/sites-available/ruptura
 ```
 
-Conteúdo:
+Conteúdo (igual para ambos os sistemas):
 
 ```nginx
 server {
@@ -544,12 +588,28 @@ server {
 }
 ```
 
+**Oracle Linux 9 / RHEL 9** — usa `conf.d` (sem symlink):
+
+```bash
+sudo nano /etc/nginx/conf.d/ruptura.conf
+# Cole o mesmo bloco server { ... } acima e salve
+```
+
 ### 10.2 Ativar o site
 
 ```bash
+# Ubuntu / Debian
 sudo ln -s /etc/nginx/sites-available/ruptura /etc/nginx/sites-enabled/
 sudo nginx -t          # testa a configuração
 sudo systemctl reload nginx
+
+# Oracle Linux 9 / RHEL 9
+# Não precisa de symlink — basta testar e recarregar
+sudo nginx -t
+sudo systemctl reload nginx
+
+# OL9/RHEL9: permitir que o Nginx conecte a portas locais (SELinux)
+sudo setsebool -P httpd_can_network_connect 1
 ```
 
 ---
@@ -561,7 +621,12 @@ sudo systemctl reload nginx
 ### 11.1 Instalar Certbot
 
 ```bash
+# Ubuntu / Debian
 sudo apt install -y certbot python3-certbot-nginx
+
+# Oracle Linux 9 / RHEL 9
+sudo dnf install -y epel-release
+sudo dnf install -y certbot python3-certbot-nginx
 ```
 
 ### 11.2 Emitir certificado
@@ -904,3 +969,5 @@ sudo systemctl reload nginx
 | Mar/2025 | Campo `id_bandeira` na tabela `clientes` — passado como parâmetro `:2`/`$2` na query do ERP |
 | Mar/2025 | Edição de cliente: campo `senha_bd` não sobrescreve o banco se deixado vazio |
 | Mar/2025 | Oracle: ativado Thick mode para suporte a Oracle < 12c; remoção automática de `;` final na query |
+| Mar/2026 | Responsividade da tela de usuários no mobile: modal fullscreen em telas pequenas, truncamento de nomes longos nas listas de permissão, correção de layout flex nos botões de ação |
+| Mar/2026 | Adicionados comandos de instalação para Oracle Linux 9 / RHEL 9 (dnf, PostgreSQL 16 PGDG, Nginx conf.d, SELinux, Certbot via EPEL) |
