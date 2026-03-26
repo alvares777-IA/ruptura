@@ -814,7 +814,7 @@ O app suporta **três modos de leitura**, que coexistem sem conflito:
 
 Coletores de dados com leitores dedicados (Zebra, Honeywell, Datalogic, Newland etc.) operam no **modo teclado (wedge)**: o scanner envia os dígitos do código de barras como teclas, seguidos de `Enter`.
 
-Atenção:Precisa trocar de Broadcast para FOCUS em scantool Settings no coletor da COMPEX
+Atenção:Precisa trocar de Broadcast para FOCUS em scantool Settings no coletor da COMPEX e ligar o endchar. 
 
 **Funcionamento por tela:**
 
