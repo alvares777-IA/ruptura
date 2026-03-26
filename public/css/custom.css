@@ -87,3 +87,18 @@ main { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 
 /* --- Evita overflow horizontal --- */
 body { overflow-x: hidden; }
+
+/* --- Modal editar usuario: scroll no iOS --- */
+@media (max-width: 575.98px) {
+  #modalEditarUsuario .modal-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  #modalEditarUsuario .modal-body {
+    flex: 1 1 auto;
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
