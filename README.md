@@ -970,4 +970,5 @@ sudo systemctl reload nginx
 | Mar/2025 | Edição de cliente: campo `senha_bd` não sobrescreve o banco se deixado vazio |
 | Mar/2025 | Oracle: ativado Thick mode para suporte a Oracle < 12c; remoção automática de `;` final na query |
 | Mar/2026 | Responsividade da tela de usuários no mobile: modal fullscreen em telas pequenas, truncamento de nomes longos nas listas de permissão, correção de layout flex nos botões de ação |
+| Mar/2026 | Scanner: removido `aspectRatio: 1.7` (câmera pequena), `qrbox` proporcional ao vídeo (88%×38%), resolução ideal 1280×720, fps 12→20 |
 | Mar/2026 | Adicionados comandos de instalação para Oracle Linux 9 / RHEL 9 (dnf, PostgreSQL 16 PGDG, Nginx conf.d, SELinux, Certbot via EPEL) |

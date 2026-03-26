@@ -44,13 +44,17 @@ function initScanner(opts) {
     });
 
     const config = {
-      fps: 12,
+      fps: 20,
       qrbox: function(w, h) {
-        const menor = Math.min(w, h);
-        return { width: Math.round(menor * 0.75), height: Math.round(menor * 0.4) };
+        // Caixa larga proporcional ao vídeo — ideal para EAN/DUN/CODE-128
+        return { width: Math.round(w * 0.88), height: Math.round(h * 0.38) };
       },
-      aspectRatio: 1.7,
       disableFlip: false,
+      videoConstraints: {
+        facingMode: 'environment',
+        width:  { ideal: 1280 },
+        height: { ideal: 720 },
+      },
     };
 
     scanner.start(
