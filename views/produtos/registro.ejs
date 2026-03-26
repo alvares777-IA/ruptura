@@ -47,6 +47,9 @@
       <div id="reader" class="rounded overflow-hidden"></div>
     </div>
 
+    <!-- Preview assíncrono do produto (aparece após leitura do código) -->
+    <div id="previewProduto" class="alert d-none mb-3 py-2 px-3 small" role="status"></div>
+
     <!-- Quantidade (opcional) -->
     <div class="mb-3">
       <label class="form-label fw-semibold">Quantidade <span class="text-muted fw-normal">(opcional)</span></label>
@@ -94,35 +97,102 @@
 <script src="/js/scanner.js"></script>
 <script>
 (function() {
-  const selCliente = document.getElementById('selCliente');
+  const selCliente  = document.getElementById('selCliente');
   const inputCodigo = document.getElementById('inputCodigo');
   const inputQtd    = document.getElementById('inputQtd');
   const btnValidar  = document.getElementById('btnValidar');
   const resultado   = document.getElementById('resultado');
+  const preview     = document.getElementById('previewProduto');
   const toastErroEl = document.getElementById('toastErro');
   const toastErro   = new bootstrap.Toast(toastErroEl, { delay: 4000 });
+
+  var consultaCtrl = null; // AbortController da consulta assíncrona em andamento
 
   function showErro(msg) {
     document.getElementById('toastErroMsg').textContent = msg;
     toastErro.show();
   }
 
-  // Inicializa estado do botao (cliente pode ja vir pre-selecionado)
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function ocultarPreview() {
+    if (consultaCtrl) { consultaCtrl.abort(); consultaCtrl = null; }
+    preview.className = 'alert d-none mb-3 py-2 px-3 small';
+    preview.innerHTML = '';
+  }
+
+  // ── Consulta assíncrona ao ERP (preview sem salvar) ──────────────────
+  function iniciarConsulta(codigo, idCliente) {
+    if (consultaCtrl) consultaCtrl.abort();
+    consultaCtrl = new AbortController();
+
+    preview.className = 'alert alert-secondary d-flex align-items-center gap-2 mb-3 py-2 px-3 small';
+    preview.innerHTML = '<span class="spinner-border spinner-border-sm flex-shrink-0"></span><span>Buscando produto...</span>';
+
+    fetch(
+      '/api/produtos/consultar?id_cliente=' + encodeURIComponent(idCliente) +
+      '&codigo=' + encodeURIComponent(codigo),
+      { signal: consultaCtrl.signal }
+    )
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        preview.className = 'alert alert-success mb-3 py-2 px-3 small';
+        preview.innerHTML =
+          '<span class="fw-semibold font-monospace">' + escHtml(codigo) + '</span>' +
+          ' &mdash; ' + escHtml(data.produto.descricao);
+      } else {
+        preview.className = 'alert alert-danger mb-3 py-2 px-3 small';
+        preview.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>' + escHtml(data.msg);
+        // Produto não encontrado: devolve foco ao código para nova leitura
+        inputCodigo.select();
+        inputCodigo.focus();
+      }
+    })
+    .catch(function(err) {
+      if (err.name === 'AbortError') return;
+      preview.className = 'alert alert-danger mb-3 py-2 px-3 small';
+      preview.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i>Erro ao consultar produto.';
+      inputCodigo.focus();
+    });
+  }
+
+  // ── Estado inicial do botão ───────────────────────────────────────────
   btnValidar.disabled = !selCliente.value || !inputCodigo.value.trim();
 
   selCliente.addEventListener('change', function() {
     btnValidar.disabled = !this.value || !inputCodigo.value.trim();
+    ocultarPreview();
   });
 
   inputCodigo.addEventListener('input', function() {
     btnValidar.disabled = !selCliente.value || !this.value.trim();
     resultado.classList.add('d-none');
+    ocultarPreview();
   });
 
+  // Enter no campo de código → avança para quantidade + busca assíncrona
   inputCodigo.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !btnValidar.disabled) btnValidar.click();
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const codigo = this.value.trim();
+    if (!codigo || !selCliente.value) return;
+    inputQtd.value = '';
+    inputQtd.focus();
+    iniciarConsulta(codigo, selCliente.value);
   });
 
+  // Enter no campo de quantidade → submete
+  inputQtd.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !btnValidar.disabled) {
+      e.preventDefault();
+      btnValidar.click();
+    }
+  });
+
+  // ── Validar e registrar ───────────────────────────────────────────────
   btnValidar.addEventListener('click', function() {
     const codigo    = inputCodigo.value.trim();
     const idCliente = selCliente.value;
@@ -130,6 +200,9 @@
 
     btnValidar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Validando...';
     btnValidar.disabled  = true;
+
+    // Cancela preview em andamento (a validação real resolverá a descrição)
+    if (consultaCtrl) { consultaCtrl.abort(); consultaCtrl = null; }
 
     fetch('/api/produtos/validar', {
       method: 'POST',
@@ -142,6 +215,7 @@
         document.getElementById('resCodigo').textContent    = codigo;
         document.getElementById('resDescricao').textContent = data.produto.descricao;
         resultado.classList.remove('d-none');
+        ocultarPreview();
         inputCodigo.value = '';
         inputQtd.value    = '';
         inputCodigo.focus();
@@ -156,16 +230,21 @@
     });
   });
 
-  // Camera
+  // ── Câmera / wedge: mesmo fluxo do Enter manual ───────────────────────
   initScanner({
     btnAbrir:    'btnCamera',
     btnFechar:   'btnFecharCamera',
     container:   'readerContainer',
     readerId:    'reader',
     onDecode: function(codigo) {
-      inputCodigo.value = codigo;
+      inputCodigo.value   = codigo;
       btnValidar.disabled = !selCliente.value;
-      if (selCliente.value) btnValidar.click();
+      ocultarPreview();
+      if (selCliente.value) {
+        inputQtd.value = '';
+        inputQtd.focus();
+        iniciarConsulta(codigo, selCliente.value);
+      }
     },
   });
 })();

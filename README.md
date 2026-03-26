@@ -814,6 +814,8 @@ O app suporta **três modos de leitura**, que coexistem sem conflito:
 
 Coletores de dados com leitores dedicados (Zebra, Honeywell, Datalogic, Newland etc.) operam no **modo teclado (wedge)**: o scanner envia os dígitos do código de barras como teclas, seguidos de `Enter`.
 
+Atenção:Precisa trocar de Broadcast para FOCUS em scantool Settings no coletor da COMPEX
+
 **Funcionamento por tela:**
 
 - **Tela de Registro** (`/produtos/registro`): o campo de código fica focado. O leitor escreve diretamente nele e o `Enter` aciona o registro automático — nenhum toque na tela necessário.
@@ -1054,6 +1056,7 @@ Testam isoladamente a lógica dos scripts JavaScript do frontend — sem precisa
 - Seleção automática do modo nativo (`BarcodeDetector`) quando disponível
 - Uso do fallback (`Html5Qrcode`) em browsers sem `BarcodeDetector`
 - Fechamento da câmera ao ocultar a aba (`visibilitychange`)
+- Detecção de wedge (leitor infravermelho/laser): sequência de teclas rápidas + Enter
 
 #### Como executar
 

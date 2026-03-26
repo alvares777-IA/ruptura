@@ -69,6 +69,50 @@ router.post('/produtos/validar', async (req, res) => {
   }
 });
 
+// GET /api/produtos/consultar?id_cliente=&codigo=
+// Consulta o produto no ERP sem salvar — usado para preview enquanto o
+// usuário preenche a quantidade no campo seguinte
+router.get('/produtos/consultar', async (req, res) => {
+  const { id_cliente, codigo } = req.query;
+  if (!id_cliente || !codigo) {
+    return res.status(400).json({ ok: false, msg: 'Informe o cliente e o codigo.' });
+  }
+
+  if (!req.user.admin) {
+    const check = await pool.query(
+      'SELECT 1 FROM permissao_cliente WHERE id_usuario=$1 AND id_cliente=$2',
+      [req.user.id_usuario, id_cliente]
+    );
+    if (check.rows.length === 0) {
+      return res.status(403).json({ ok: false, msg: 'Sem permissao para este cliente.' });
+    }
+  }
+
+  try {
+    const cliQ = await pool.query('SELECT * FROM clientes WHERE id_cliente=$1 AND ativo=true', [id_cliente]);
+    if (cliQ.rows.length === 0) {
+      return res.status(404).json({ ok: false, msg: 'Cliente nao encontrado.' });
+    }
+
+    let produto;
+    try {
+      produto = await buscarProduto(cliQ.rows[0], codigo);
+    } catch (erpErr) {
+      console.error('Erro ERP (consultar):', erpErr.message);
+      return res.status(502).json({ ok: false, msg: 'Erro ao conectar ao ERP: ' + erpErr.message });
+    }
+
+    if (!produto) {
+      return res.status(404).json({ ok: false, msg: 'Produto nao encontrado no ERP.' });
+    }
+
+    return res.json({ ok: true, produto });
+  } catch (err) {
+    console.error('Erro ao consultar produto:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
 // PUT /api/produtos/quantidade
 // Atualiza a quantidade de um produto ja coletado
 router.put('/produtos/quantidade', async (req, res) => {
