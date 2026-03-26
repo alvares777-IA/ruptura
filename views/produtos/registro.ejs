@@ -163,6 +163,7 @@
 
       // ── Estado inicial do botão ───────────────────────────────────────────
       btnValidar.disabled = !selCliente.value || !inputCodigo.value.trim();
+      if (selCliente.value) inputCodigo.focus();
 
       selCliente.addEventListener('change', function () {
         btnValidar.disabled = !this.value || !inputCodigo.value.trim();
