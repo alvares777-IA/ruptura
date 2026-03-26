@@ -1,9 +1,13 @@
 /**
  * scanner.js — Leitor de código de barras
  *
- * Estratégia:
- *  1. BarcodeDetector nativo (Chrome/Edge Android 83+) — usa detecção do SO, muito mais precisa
+ * Modos suportados:
+ *  1. BarcodeDetector nativo (Chrome/Edge Android 83+) — usa detecção do SO
  *  2. Fallback: html5-qrcode (outros browsers)
+ *  3. Wedge: leitor infravermelho / laser / bluetooth em modo teclado
+ *     Funciona automaticamente quando nenhum campo de texto está focado.
+ *     Em telas com input focado (ex: registro.ejs), o leitor escreve direto
+ *     no campo — não é necessário nenhum código extra.
  *
  * initScanner({ btnAbrir, btnFechar, container, readerId, onDecode })
  */
@@ -15,16 +19,16 @@ function initScanner(opts) {
 
   if (!btnAbrir || !btnFechar || !container) return;
 
-  let ativo      = false;
+  let ativo     = false;
 
   // Estado modo nativo
-  let stream     = null;
-  let videoEl    = null;
-  let detector   = null;
-  let scanTimer  = null;
+  let stream    = null;
+  let videoEl   = null;
+  let detector  = null;
+  let scanTimer = null;
 
   // Estado fallback
-  let h5         = null;
+  let h5        = null;
 
   const USA_NATIVE = 'BarcodeDetector' in window;
 
@@ -130,6 +134,83 @@ function initScanner(opts) {
       alert('Não foi possível acessar a câmera.\n' + (err.message || err));
     });
   }
+
+  /* ─── MODO WEDGE (infravermelho / laser / bluetooth em modo teclado) ─
+   *
+   * Coletores de dados enviam os dígitos do código muito rapidamente
+   * (< 10 ms entre teclas) seguidos de Enter. Esta lógica distingue
+   * uma leitura de scanner da digitação humana pelo intervalo entre
+   * teclas consecutivas.
+   *
+   * Só atua quando:
+   *   • a câmera NÃO está ativa (evita duplo disparo)
+   *   • nenhum campo de texto / select está focado
+   *     (se um input estiver focado, o scanner escreve direto nele e
+   *      o próprio campo cuida do Enter — ex: registro.ejs)
+   * ─────────────────────────────────────────────────────────────────── */
+  (function initWedge() {
+    var buf    = '';
+    var lastMs = 0;
+    var guardT = null;
+    var GAP    = 50;   // ms máximo entre teclas para ser scanner (humanos: > 100 ms)
+    var MINLEN = 6;    // menor código prático (EAN-8 tem 8 dígitos)
+
+    function campoFocado() {
+      var el = document.activeElement;
+      if (!el) return false;
+      if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+      if (el.tagName === 'INPUT') {
+        var t = (el.type || 'text').toLowerCase();
+        // Checkboxes, radios e botões não recebem texto — não bloquear
+        return !/^(checkbox|radio|button|submit|reset|file|image|range|color)$/.test(t);
+      }
+      if (el.isContentEditable) return true;
+      return false;
+    }
+
+    document.addEventListener('keydown', function(e) {
+      // Câmera ativa: ignora (câmera e wedge não operam ao mesmo tempo)
+      if (ativo) return;
+
+      // Campo de texto focado: deixa o input receber os chars normalmente
+      if (campoFocado()) { buf = ''; lastMs = 0; return; }
+
+      var now = Date.now();
+      var gap = lastMs ? (now - lastMs) : Infinity;
+
+      // Intervalo grande = nova sequência (ou digitação humana) — descarta buf
+      if (gap > GAP) buf = '';
+
+      // Enter ou Tab = terminador de código
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (buf.length >= MINLEN) {
+          var codigo = buf;
+          buf = ''; lastMs = 0;
+          clearTimeout(guardT);
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (navigator.vibrate) navigator.vibrate(40);
+          onDecode(codigo);
+        } else {
+          buf = ''; lastMs = 0;
+        }
+        return;
+      }
+
+      // Apenas caracteres imprimíveis (ignora Shift, Alt, F5 etc.)
+      if (e.key.length !== 1) return;
+
+      lastMs = now;
+      buf += e.key;
+
+      // Evita que os chars apareçam em lugares inesperados da página
+      e.preventDefault();
+
+      // Segurança: descarta buffer se ficar parado por mais de 200 ms sem Enter
+      clearTimeout(guardT);
+      guardT = setTimeout(function() { buf = ''; lastMs = 0; }, 200);
+    }, true); // capture=true: intercepta antes dos handlers dos elementos
+  })();
 
   /* ─── ABRIR / FECHAR ─────────────────────────────────────────────── */
   function abrirCamera() {
