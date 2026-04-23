@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cmd /c \"mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\config\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\middleware\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\routes\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\db\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\views\\\\admin\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\views\\\\produtos\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\views\\\\relatorios\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\public\\\\css\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\public\\\\js\"\" 2>nul && mkdir \"\"\\\\wsl.localhost\\\\Ubuntu\\\\home\\\\marcelo\\\\ruptura\\\\public\\\\img\"\" 2>nul && echo DONE\")"
+    ]
+  }
+}
