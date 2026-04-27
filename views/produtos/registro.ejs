@@ -61,8 +61,8 @@
       <!-- Quantidade -->
       <div class="mb-2">
         <label class="form-label small fw-semibold mb-1">Quantidade <span class="text-muted fw-normal">(opcional)</span></label>
-        <input type="number" id="inputQtd" class="form-control form-control-lg"
-               placeholder="0" min="0" max="999" step="1">
+        <input type="text" id="inputQtd" class="form-control form-control-lg"
+               placeholder="0" pattern="[0-9]*" maxlength="3" >
         <div class="invalid-feedback"></div>
       </div>
 
