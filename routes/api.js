@@ -92,6 +92,11 @@ router.get('/produtos/consultar', async (req, res) => {
       return res.status(404).json({ ok: false, msg: 'Cliente nao encontrado.' });
     }
 
+    console.log('\n--- consultar EAN (preview) ---');
+    console.log(`id_cliente=${id_cliente}  codigo=${codigo}  id_usuario=${req.user.id_usuario}`);
+    console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
+    console.log('-------------------------------\n');
+
     let produto;
     try {
       produto = await buscarProduto(cliQ.rows[0], codigo);
