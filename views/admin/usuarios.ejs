@@ -41,7 +41,8 @@
                       data-nome="<%= u.nome %>"
                       data-email="<%= u.email %>"
                       data-admin="<%= u.admin %>"
-                      data-ativo="<%= u.ativo %>">
+                      data-ativo="<%= u.ativo %>"
+                      data-ao-debug="<%= u.ao_debug %>">
                 <i class="bi bi-pencil"></i>
               </button>
               <!-- Promover/Rebaixar admin -->
@@ -101,9 +102,15 @@
             <label class="form-label">Senha inicial</label>
             <input type="password" name="senha" class="form-control" required minlength="6">
           </div>
-          <div class="form-check">
-            <input type="checkbox" name="admin" id="cbAdmin" class="form-check-input">
-            <label class="form-check-label" for="cbAdmin">Administrador</label>
+          <div class="d-flex gap-4">
+            <div class="form-check">
+              <input type="checkbox" name="admin" id="cbAdmin" class="form-check-input">
+              <label class="form-check-label" for="cbAdmin">Administrador</label>
+            </div>
+            <div class="form-check">
+              <input type="checkbox" name="ao_debug" id="cbDebug" class="form-check-input">
+              <label class="form-check-label" for="cbDebug">Debug</label>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -141,7 +148,7 @@
               <label class="form-label fw-semibold">Nova senha <span class="text-muted fw-normal">(deixe em branco para manter)</span></label>
               <input type="password" name="senha" class="form-control" minlength="6" autocomplete="new-password">
             </div>
-            <div class="col-12 col-sm-6 d-flex align-items-end gap-4 pb-1">
+            <div class="col-12 col-sm-6 d-flex align-items-end gap-4 pb-1 flex-wrap">
               <div class="form-check">
                 <input type="checkbox" name="admin" id="editAdmin" class="form-check-input">
                 <label class="form-check-label" for="editAdmin">Administrador</label>
@@ -149,6 +156,10 @@
               <div class="form-check">
                 <input type="checkbox" name="ativo" id="editAtivo" class="form-check-input">
                 <label class="form-check-label" for="editAtivo">Ativo</label>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" name="ao_debug" id="editDebug" class="form-check-input">
+                <label class="form-check-label" for="editDebug">Debug</label>
               </div>
             </div>
           </div>
@@ -307,6 +318,7 @@
     document.getElementById('editEmail').value = btn.dataset.email;
     document.getElementById('editAdmin').checked = btn.dataset.admin === 'true';
     document.getElementById('editAtivo').checked = btn.dataset.ativo === 'true';
+    document.getElementById('editDebug').checked = btn.dataset.aoDebug === 'S';
     document.getElementById('formEditarUsuario').action = '/admin/usuarios/' + editIdUsuario + '?_method=PUT';
 
     // Marcar permissoes existentes

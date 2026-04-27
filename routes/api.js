@@ -32,14 +32,16 @@ router.post('/produtos/validar', async (req, res) => {
     const cliente = cliQ.rows[0];
 
     const qt = qt_coletada ? parseFloat(qt_coletada) : null;
-    console.log('\n--- produtos_coletados INSERT (teste manual) ---');
-    console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
-    console.log(`INSERT INTO produtos_coletados (id_cliente,codigo_produto,dt_coleta,id_usuario,qt_coletada,descricao,erp_validado,erp_dados,updated_at) VALUES (${id_cliente},'${codigo}',CURRENT_DATE,${req.user.id_usuario},${qt ?? 'NULL'},'<descricao_erp>',true,'{}',NOW()) ON CONFLICT (id_cliente,codigo_produto,dt_coleta,id_usuario) DO UPDATE SET qt_coletada=EXCLUDED.qt_coletada,descricao=EXCLUDED.descricao,erp_validado=true,erp_dados=EXCLUDED.erp_dados,updated_at=NOW();`);
-    console.log('------------------------------------------------\n');
+    if (req.user.ao_debug === 'S') {
+      console.log('\n--- produtos_coletados INSERT (teste manual) ---');
+      console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
+      console.log(`INSERT INTO produtos_coletados (id_cliente,codigo_produto,dt_coleta,id_usuario,qt_coletada,descricao,erp_validado,erp_dados,updated_at) VALUES (${id_cliente},'${codigo}',CURRENT_DATE,${req.user.id_usuario},${qt ?? 'NULL'},'<descricao_erp>',true,'{}',NOW()) ON CONFLICT (id_cliente,codigo_produto,dt_coleta,id_usuario) DO UPDATE SET qt_coletada=EXCLUDED.qt_coletada,descricao=EXCLUDED.descricao,erp_validado=true,erp_dados=EXCLUDED.erp_dados,updated_at=NOW();`);
+      console.log('------------------------------------------------\n');
+    }
 
     let produto;
     try {
-      produto = await buscarProduto(cliente, codigo);
+      produto = await buscarProduto(cliente, codigo, req.user.ao_debug === 'S');
     } catch (erpErr) {
       console.error('Erro ERP:', erpErr.message);
       return res.status(502).json({ ok: false, msg: 'Erro ao conectar ao ERP: ' + erpErr.message });
@@ -92,14 +94,16 @@ router.get('/produtos/consultar', async (req, res) => {
       return res.status(404).json({ ok: false, msg: 'Cliente nao encontrado.' });
     }
 
-    console.log('\n--- consultar EAN (preview) ---');
-    console.log(`id_cliente=${id_cliente}  codigo=${codigo}  id_usuario=${req.user.id_usuario}`);
-    console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
-    console.log('-------------------------------\n');
+    if (req.user.ao_debug === 'S') {
+      console.log('\n--- consultar EAN (preview) ---');
+      console.log(`id_cliente=${id_cliente}  codigo=${codigo}  id_usuario=${req.user.id_usuario}`);
+      console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
+      console.log('-------------------------------\n');
+    }
 
     let produto;
     try {
-      produto = await buscarProduto(cliQ.rows[0], codigo);
+      produto = await buscarProduto(cliQ.rows[0], codigo, req.user.ao_debug === 'S');
     } catch (erpErr) {
       console.error('Erro ERP (consultar):', erpErr.message);
       return res.status(502).json({ ok: false, msg: 'Erro ao conectar ao ERP: ' + erpErr.message });

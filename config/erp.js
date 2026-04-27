@@ -28,7 +28,7 @@ const _pools = {};
  * Busca produto no ERP do cliente pelo codigo EAN/DUN.
  * Retorna { descricao, dados } ou lanca erro.
  */
-async function buscarProduto(cliente, codigo) {
+async function buscarProduto(cliente, codigo, debug = false) {
   const { tipo_conexao } = cliente;
 
   if (tipo_conexao === 'endpoint') {
@@ -38,7 +38,7 @@ async function buscarProduto(cliente, codigo) {
   const query = cliente.query_produto ||
     'SELECT * FROM produtos WHERE codigo_ean = $1 OR codigo_dun = $1 LIMIT 1';
 
-  if (tipo_conexao === 'oracle') return buscarOracleProduto(cliente, codigo, query);
+  if (tipo_conexao === 'oracle') return buscarOracleProduto(cliente, codigo, query, debug);
   if (tipo_conexao === 'postgres') return buscarPostgresProduto(cliente, codigo, query);
   if (tipo_conexao === 'mysql') return buscarMysqlProduto(cliente, codigo, query);
 
@@ -46,17 +46,19 @@ async function buscarProduto(cliente, codigo) {
 }
 
 // ---------- Oracle ----------
-async function buscarOracleProduto(cliente, codigo, query) {
+async function buscarOracleProduto(cliente, codigo, query, debug = false) {
   const connectString = buildOracleConnectString(cliente);
   const sql = query.trim().replace(/;+$/, '');
   const params = [codigo, cliente.id_bandeira || null];
-  console.log('\n--- Oracle ERP (buscarProduto) ---');
-  console.log(`  user:          ${cliente.usuario_bd}`);
-  console.log(`  connectString: ${connectString}`);
-  console.log(`  sql:           ${sql}`);
-  console.log(`  params:        ${JSON.stringify(params)}`);
-  console.log(`  sqlplus:       ${sql.replace(':1', `'${codigo}'`).replace(':2', params[1] === null ? 'NULL' : `'${params[1]}'`)}`);
-  console.log('----------------------------------\n');
+  if (debug) {
+    console.log('\n--- Oracle ERP (buscarProduto) ---');
+    console.log(`  user:          ${cliente.usuario_bd}`);
+    console.log(`  connectString: ${connectString}`);
+    console.log(`  sql:           ${sql}`);
+    console.log(`  params:        ${JSON.stringify(params)}`);
+    console.log(`  sqlplus:       ${sql.replace(':1', `'${codigo}'`).replace(':2', params[1] === null ? 'NULL' : `'${params[1]}'`)}`);
+    console.log('----------------------------------\n');
+  }
 
   let conn;
   try {

@@ -14,7 +14,7 @@ router.use(requireAuth);
 router.get('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
     const [usuariosQ, menusQ, clientesQ, permMenuQ, permCliQ] = await Promise.all([
-      pool.query('SELECT id_usuario, nome, email, admin, ativo, created_at FROM usuarios ORDER BY nome'),
+      pool.query('SELECT id_usuario, nome, email, admin, ativo, created_at, ao_debug FROM usuarios ORDER BY nome'),
       pool.query('SELECT * FROM menus ORDER BY ordem'),
       pool.query('SELECT * FROM clientes WHERE ativo=true ORDER BY nome'),
       pool.query('SELECT * FROM permissao_menu'),
@@ -32,11 +32,12 @@ router.get('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) =
 
 router.post('/usuarios', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
-    const { nome, email, senha, admin: isAdmin } = req.body;
+    const { nome, email, senha, admin: isAdmin, ao_debug } = req.body;
     const hash = await bcrypt.hash(senha.trim().toLowerCase(), 12);
+    const aoDebug = ao_debug === 'on' ? 'S' : 'N';
     const ins = await pool.query(
-      'INSERT INTO usuarios (nome, email, senha, admin, ativo) VALUES ($1,$2,$3,$4,false) RETURNING *',
-      [nome, email.toLowerCase().trim(), hash, isAdmin === 'on']
+      'INSERT INTO usuarios (nome, email, senha, admin, ativo, ao_debug) VALUES ($1,$2,$3,$4,false,$5) RETURNING *',
+      [nome, email.toLowerCase().trim(), hash, isAdmin === 'on', aoDebug]
     );
     notificarAdminsNovoUsuario(ins.rows[0]);
     req.session.flash = { tipo: 'success', msg: 'Usuario criado. Ele ficara inativo ate ser ativado por um administrador.' };
@@ -69,7 +70,8 @@ router.post('/usuarios/:id/resetsenha', requireMenu('/admin/usuarios'), async (r
 
 router.put('/usuarios/:id', requireMenu('/admin/usuarios'), async (req, res, next) => {
   try {
-    const { nome, email, senha, admin: isAdmin, ativo: isAtivo } = req.body;
+    const { nome, email, senha, admin: isAdmin, ativo: isAtivo, ao_debug } = req.body;
+    const aoDebug = ao_debug === 'on' ? 'S' : 'N';
     const id = req.params.id;
 
     // Impede remover o admin flag do ultimo administrador
@@ -89,13 +91,13 @@ router.put('/usuarios/:id', requireMenu('/admin/usuarios'), async (req, res, nex
     if (senha && senha.trim()) {
       const hash = await bcrypt.hash(senha.trim().toLowerCase(), 12);
       await pool.query(
-        'UPDATE usuarios SET nome=$1, email=$2, senha=$3, admin=$4, ativo=$5 WHERE id_usuario=$6',
-        [nome, email.toLowerCase().trim(), hash, isAdmin === 'on', isAtivo === 'on', id]
+        'UPDATE usuarios SET nome=$1, email=$2, senha=$3, admin=$4, ativo=$5, ao_debug=$6 WHERE id_usuario=$7',
+        [nome, email.toLowerCase().trim(), hash, isAdmin === 'on', isAtivo === 'on', aoDebug, id]
       );
     } else {
       await pool.query(
-        'UPDATE usuarios SET nome=$1, email=$2, admin=$3, ativo=$4 WHERE id_usuario=$5',
-        [nome, email.toLowerCase().trim(), isAdmin === 'on', isAtivo === 'on', id]
+        'UPDATE usuarios SET nome=$1, email=$2, admin=$3, ativo=$4, ao_debug=$5 WHERE id_usuario=$6',
+        [nome, email.toLowerCase().trim(), isAdmin === 'on', isAtivo === 'on', aoDebug, id]
       );
     }
     req.session.flash = { tipo: 'success', msg: 'Usuario atualizado.' };
