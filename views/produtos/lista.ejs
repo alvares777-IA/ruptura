@@ -81,10 +81,10 @@
         <div class="mb-2">
           <label class="form-label fw-semibold small">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
           <input type="text" id="inputQtdModal" class="form-control form-control-lg text-center"
-                 pattern="[0-9]*" maxlength="3" placeholder="0">
+                 inputmode="decimal" placeholder="0">
         </div>
         <div class="d-flex align-items-center justify-content-between">
-          <label class="form-label small fw-semibold mb-0">Ao coletado</label>
+          <label class="form-label small fw-semibold mb-0">Coletado</label>
           <div class="form-check form-switch mb-0">
             <input type="checkbox" id="chkAoColetado" class="form-check-input" role="switch">
           </div>
@@ -214,7 +214,11 @@
     };
     document.getElementById('qtdCodigo').textContent    = produtoAtual.codigo_produto;
     document.getElementById('qtdDescricao').textContent = produtoAtual.descricao;
-    document.getElementById('inputQtdModal').value      = produtoAtual.qt_atual !== 'null' ? produtoAtual.qt_atual : '';
+    const qtRaw = produtoAtual.qt_atual;
+    document.getElementById('inputQtdModal').value =
+      (qtRaw !== '' && qtRaw !== 'null' && qtRaw !== null)
+        ? String(parseFloat(qtRaw)).replace('.', ',')
+        : '';
     document.getElementById('chkAoColetado').checked    = produtoAtual.ao_coletado === 'S';
     document.getElementById('confirmExcluir').classList.add('d-none');
     document.getElementById('btnExcluirProduto').classList.remove('d-none');
@@ -225,7 +229,7 @@
   // Salvar quantidade + ao_coletado
   document.getElementById('btnSalvarQtd').addEventListener('click', function() {
     if (!produtoAtual) return;
-    const qt = document.getElementById('inputQtdModal').value;
+    const qt = document.getElementById('inputQtdModal').value.trim().replace(',', '.');
     const ao = document.getElementById('chkAoColetado').checked ? 'S' : 'N';
 
     fetch('/api/produtos/quantidade', {
