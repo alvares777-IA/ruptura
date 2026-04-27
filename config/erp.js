@@ -47,16 +47,26 @@ async function buscarProduto(cliente, codigo) {
 
 // ---------- Oracle ----------
 async function buscarOracleProduto(cliente, codigo, query) {
+  const connectString = buildOracleConnectString(cliente);
+  const sql = query.trim().replace(/;+$/, '');
+  const params = [codigo, cliente.id_bandeira || null];
+  console.log('\n--- Oracle ERP (buscarProduto) ---');
+  console.log(`  user:          ${cliente.usuario_bd}`);
+  console.log(`  connectString: ${connectString}`);
+  console.log(`  sql:           ${sql}`);
+  console.log(`  params:        ${JSON.stringify(params)}`);
+  console.log(`  sqlplus:       ${sql.replace(':1', `'${codigo}'`).replace(':2', params[1] === null ? 'NULL' : `'${params[1]}'`)}`);
+  console.log('----------------------------------\n');
+
   let conn;
   try {
     conn = await oracledb.getConnection({
       user:             cliente.usuario_bd,
       password:         cliente.senha_bd,
-      connectString:    buildOracleConnectString(cliente),
+      connectString,
     });
     conn.outFormat = oracledb.OUT_FORMAT_OBJECT;
-    const sql = query.trim().replace(/;+$/, '');  // Oracle rejeita ponto-e-virgula no final
-    const result = await conn.execute(sql, [codigo, cliente.id_bandeira || null]);
+    const result = await conn.execute(sql, params);
     if (!result.rows || result.rows.length === 0) return null;
     const row = result.rows[0];
     return {
