@@ -66,7 +66,7 @@
   <% }); %>
 </div>
 
-<!-- Modal de quantidade -->
+<!-- Modal de edição -->
 <div class="modal fade" id="modalQtd" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -78,15 +78,44 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body py-2">
-        <label class="form-label fw-semibold small">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
-        <input type="text" id="inputQtdModal" class="form-control form-control-lg text-center"
-               pattern="[0-9]*" maxlength="3"  placeholder="0">
+        <div class="mb-2">
+          <label class="form-label fw-semibold small">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
+          <input type="text" id="inputQtdModal" class="form-control form-control-lg text-center"
+                 pattern="[0-9]*" maxlength="3" placeholder="0">
+        </div>
+        <div class="d-flex align-items-center justify-content-between">
+          <label class="form-label small fw-semibold mb-0">Ao coletado</label>
+          <div class="form-check form-switch mb-0">
+            <input type="checkbox" id="chkAoColetado" class="form-check-input" role="switch">
+          </div>
+        </div>
       </div>
-      <div class="modal-footer py-2">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary btn-sm" id="btnSalvarQtd">
-          <i class="bi bi-floppy me-1"></i>Salvar
-        </button>
+      <div class="modal-footer py-2 flex-column gap-1 align-items-stretch">
+        <!-- Confirmação de exclusão (oculta por padrão) -->
+        <div id="confirmExcluir" class="d-none">
+          <div class="text-danger small fw-semibold mb-1">Confirmar exclusão?</div>
+          <div class="d-flex gap-1">
+            <button type="button" id="btnConfirmarExcluir" class="btn btn-danger btn-sm flex-fill">
+              <i class="bi bi-trash me-1"></i>Sim, excluir
+            </button>
+            <button type="button" id="btnCancelarExcluir" class="btn btn-secondary btn-sm flex-fill">
+              Cancelar
+            </button>
+          </div>
+        </div>
+        <!-- Rodapé normal -->
+        <div class="d-flex gap-1 justify-content-between w-100">
+          <button type="button" id="btnExcluirProduto" class="btn btn-outline-danger btn-sm"
+                  title="Excluir registro">
+            <i class="bi bi-trash"></i>
+          </button>
+          <div class="d-flex gap-1">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btnSalvarQtd">
+              <i class="bi bi-floppy me-1"></i>Salvar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -121,45 +150,6 @@
     toast.show();
   }
 
-  function renderCard(p) {
-    const div = document.createElement('div');
-    div.className = 'col-12 col-md-6 col-lg-4';
-    div.id = 'card-' + CSS.escape(p.codigo_produto);
-    div.innerHTML = buildCardHtml(p);
-    return div;
-  }
-
-  function buildCardHtml(p) {
-    const qt = p.qt_coletada !== null && p.qt_coletada !== undefined
-      ? parseFloat(p.qt_coletada).toLocaleString('pt-BR') : '—';
-    return `
-      <div class="card border-0 shadow-sm produto-card h-100"
-           data-codigo="${escHtml(p.codigo_produto)}"
-           data-descricao="${escHtml(p.descricao || '')}"
-           data-id-cliente="${escHtml(String(p.id_cliente))}"
-           data-dt-coleta="${escHtml(String(p.dt_coleta).split('T')[0])}"
-           data-id-usuario="${escHtml(String(p.id_usuario))}"
-           data-qt="${escHtml(String(p.qt_coletada ?? ''))}">
-        <div class="card-body py-2 px-3">
-          <div class="d-flex align-items-center gap-2">
-            <div class="flex-grow-1">
-              <div class="fw-semibold font-monospace small">${escHtml(p.codigo_produto)}</div>
-              <div class="text-muted small">${escHtml(p.descricao || '—')}</div>
-              <div class="mt-1">
-                <span class="badge bg-primary bg-opacity-10 text-primary">
-                  <i class="bi bi-layers me-1"></i>Qtd: ${qt}
-                </span>
-                ${p.nome_usuario ? `<span class="badge bg-light text-muted ms-1" style="font-size:.65rem">${escHtml(p.nome_usuario)}</span>` : ''}
-              </div>
-            </div>
-            <button class="btn btn-outline-primary btn-sm p-2 btn-editar-qtd" title="Editar quantidade">
-              <i class="bi bi-pencil-square fs-5"></i>
-            </button>
-          </div>
-        </div>
-      </div>`;
-  }
-
   function escHtml(str) {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -170,11 +160,47 @@
   }
   atualizarTotal();
 
+  // Atualiza visual do card com base em ao_coletado
+  function atualizarVisualAoColetado(card, valor) {
+    card.style.borderLeft = valor === 'S' ? '3px solid #198754' : '';
+    const badge = card.querySelector('.badge-ao-coletado');
+    if (badge) badge.style.display = valor === 'S' ? '' : 'none';
+  }
+
+  // Click no card: botão editar → abre modal | resto do card → toggle ao_coletado
   document.getElementById('listaProdutos').addEventListener('click', function(e) {
     const btn  = e.target.closest('.btn-editar-qtd');
     const card = e.target.closest('.produto-card');
-    if ((btn || card) && card) abrirModalQtd(card);
+    if (!card) return;
+    if (btn) {
+      abrirModalQtd(card);
+    } else {
+      toggleAoColetado(card);
+    }
   });
+
+  function toggleAoColetado(card) {
+    fetch('/api/produtos/ao-coletado', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_cliente:     card.dataset.idCliente,
+        codigo_produto: card.dataset.codigo,
+        dt_coleta:      card.dataset.dtColeta,
+        id_usuario:     card.dataset.idUsuario,
+      }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        card.dataset.aoColetado = data.ao_coletado;
+        atualizarVisualAoColetado(card, data.ao_coletado);
+      } else {
+        showToast(data.msg, false);
+      }
+    })
+    .catch(function() { showToast('Erro ao atualizar.', false); });
+  }
 
   function abrirModalQtd(card) {
     produtoAtual = {
@@ -184,17 +210,23 @@
       dt_coleta:      card.dataset.dtColeta,
       id_usuario:     card.dataset.idUsuario,
       qt_atual:       card.dataset.qt,
+      ao_coletado:    card.dataset.aoColetado || 'N',
     };
     document.getElementById('qtdCodigo').textContent    = produtoAtual.codigo_produto;
     document.getElementById('qtdDescricao').textContent = produtoAtual.descricao;
     document.getElementById('inputQtdModal').value      = produtoAtual.qt_atual !== 'null' ? produtoAtual.qt_atual : '';
+    document.getElementById('chkAoColetado').checked    = produtoAtual.ao_coletado === 'S';
+    document.getElementById('confirmExcluir').classList.add('d-none');
+    document.getElementById('btnExcluirProduto').classList.remove('d-none');
     modal.show();
     setTimeout(function() { document.getElementById('inputQtdModal').focus(); }, 400);
   }
 
+  // Salvar quantidade + ao_coletado
   document.getElementById('btnSalvarQtd').addEventListener('click', function() {
     if (!produtoAtual) return;
     const qt = document.getElementById('inputQtdModal').value;
+    const ao = document.getElementById('chkAoColetado').checked ? 'S' : 'N';
 
     fetch('/api/produtos/quantidade', {
       method: 'PUT',
@@ -205,6 +237,7 @@
         dt_coleta:      produtoAtual.dt_coleta,
         id_usuario:     produtoAtual.id_usuario,
         qt_coletada:    qt,
+        ao_coletado:    ao,
       }),
     })
     .then(function(r) { return r.json(); })
@@ -214,17 +247,58 @@
         if (cardEl) {
           const cardDiv = cardEl.querySelector('.produto-card');
           cardDiv.dataset.qt = qt;
+          cardDiv.dataset.aoColetado = ao;
           cardEl.querySelector('.badge.bg-primary').innerHTML =
             '<i class="bi bi-layers me-1"></i>Qtd: ' +
             (qt !== '' ? parseFloat(qt).toLocaleString('pt-BR') : '—');
+          atualizarVisualAoColetado(cardDiv, ao);
         }
-        showToast('Quantidade salva.', true);
+        showToast('Salvo.', true);
         modal.hide();
       } else {
         showToast(data.msg, false);
       }
     })
     .catch(function() { showToast('Erro de comunicação.', false); });
+  });
+
+  // Excluir: mostrar confirmação
+  document.getElementById('btnExcluirProduto').addEventListener('click', function() {
+    document.getElementById('confirmExcluir').classList.remove('d-none');
+    this.classList.add('d-none');
+  });
+
+  document.getElementById('btnCancelarExcluir').addEventListener('click', function() {
+    document.getElementById('confirmExcluir').classList.add('d-none');
+    document.getElementById('btnExcluirProduto').classList.remove('d-none');
+  });
+
+  document.getElementById('btnConfirmarExcluir').addEventListener('click', function() {
+    if (!produtoAtual) return;
+
+    fetch('/api/produtos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_cliente:     produtoAtual.id_cliente,
+        codigo_produto: produtoAtual.codigo_produto,
+        dt_coleta:      produtoAtual.dt_coleta,
+        id_usuario:     produtoAtual.id_usuario,
+      }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.ok) {
+        const cardEl = document.getElementById('card-' + CSS.escape(produtoAtual.codigo_produto));
+        if (cardEl) cardEl.remove();
+        atualizarTotal();
+        showToast('Registro excluído.', true);
+        modal.hide();
+      } else {
+        showToast(data.msg, false);
+      }
+    })
+    .catch(function() { showToast('Erro ao excluir.', false); });
   });
 
   initScanner({
