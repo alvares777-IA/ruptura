@@ -1,47 +1,44 @@
 <% title = 'Lista do Dia'; activeMenu = '/produtos/lista'; %>
 
-<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+<% if (!cliente) { %>
+  <div class="alert alert-warning">Nenhum cliente disponível.</div>
+<% } else { %>
+
+<input type="hidden" id="hidCliente" value="<%= cliente.id_cliente %>">
+
+<!-- Cabeçalho compacto -->
+<div class="d-flex align-items-center justify-content-between mb-2 gap-2 flex-wrap">
   <div class="d-flex align-items-center gap-2">
-    <i class="bi bi-list-check text-primary fs-4"></i>
-    <h5 class="mb-0 fw-bold">Lista do Dia</h5>
+    <i class="bi bi-list-check text-primary fs-5"></i>
+    <h6 class="mb-0 fw-bold">Lista do Dia</h6>
+    <span class="badge bg-primary bg-opacity-10 text-primary py-1 px-2">
+      <i class="bi bi-person me-1"></i><%= cliente.nome %>
+    </span>
+    <% if (!clienteUnico) { %>
+    <a href="/produtos/selecionar?destino=lista" class="btn btn-outline-secondary btn-sm py-0 px-2"
+       title="Trocar cliente">
+      <i class="bi bi-arrow-left-right"></i>
+    </a>
+    <% } %>
   </div>
-  <button class="btn btn-outline-primary btn-sm" id="btnCameraLista" title="Escanear para buscar produto">
-    <i class="bi bi-camera-fill me-1"></i> Escanear
-  </button>
-</div>
-
-<!-- Filtros -->
-<div class="card border-0 shadow-sm mb-3">
-  <div class="card-body py-2 px-3">
-    <div class="row g-2 align-items-end">
-      <div class="col-12 col-md-6">
-        <label class="form-label small fw-semibold mb-1">Cliente</label>
-        <select id="selCliente" class="form-select form-select-sm">
-          <% clientes.forEach(function(c) { %>
-          <option value="<%= c.id_cliente %>" <%= id_cliente === c.id_cliente ? 'selected' : '' %>><%= c.nome %></option>
-          <% }); %>
-        </select>
-      </div>
-      <div class="col-6 col-md-3">
-        <label class="form-label small fw-semibold mb-1">Data</label>
-        <input type="date" id="selData" class="form-control form-control-sm"
-               value="<%= new Date().toISOString().split('T')[0] %>">
-      </div>
-      <div class="col-6 col-md-3">
-        <button id="btnFiltrar" class="btn btn-primary btn-sm w-100">
-          <i class="bi bi-search me-1"></i>Filtrar
-        </button>
-      </div>
-    </div>
+  <div class="d-flex align-items-center gap-1">
+    <input type="date" id="selData" class="form-control form-control-sm"
+           style="width:140px" value="<%= new Date().toISOString().split('T')[0] %>">
+    <button id="btnFiltrar" class="btn btn-primary btn-sm" title="Filtrar">
+      <i class="bi bi-search"></i>
+    </button>
+    <button class="btn btn-outline-primary btn-sm" id="btnCameraLista" title="Escanear para buscar produto">
+      <i class="bi bi-camera-fill"></i>
+    </button>
   </div>
 </div>
 
-<!-- Reader camera (lista) -->
-<div id="readerContainerLista" class="d-none mb-3">
+<!-- Reader câmera (lista) -->
+<div id="readerContainerLista" class="d-none mb-2">
   <div class="card border-0 shadow-sm">
     <div class="card-body p-2">
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="small text-muted">Aponte para o codigo de barras do produto</span>
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="small text-muted">Aponte para o código de barras do produto</span>
         <button class="btn btn-sm btn-outline-danger" id="btnFecharCameraLista">
           <i class="bi bi-x-lg"></i>
         </button>
@@ -73,21 +70,21 @@
 <div class="modal fade" id="modalQtd" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header py-2">
         <div>
           <h6 class="modal-title fw-bold mb-0" id="qtdCodigo"></h6>
           <div class="text-muted small" id="qtdDescricao"></div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <label class="form-label fw-semibold">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
+      <div class="modal-body py-2">
+        <label class="form-label fw-semibold small">Quantidade coletada <span class="text-muted fw-normal">(opcional)</span></label>
         <input type="number" id="inputQtdModal" class="form-control form-control-lg text-center"
                min="0" step="0.001" placeholder="0">
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnSalvarQtd">
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btnSalvarQtd">
           <i class="bi bi-floppy me-1"></i>Salvar
         </button>
       </div>
@@ -105,8 +102,11 @@
   </div>
 </div>
 
+<% } %>
+
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="/js/scanner.js"></script>
+<% if (cliente) { %>
 <script>
 (function() {
   let produtoAtual = null;
@@ -121,7 +121,6 @@
     toast.show();
   }
 
-  // ---- Renderizar card a partir de objeto ----
   function renderCard(p) {
     const div = document.createElement('div');
     div.className = 'col-12 col-md-6 col-lg-4';
@@ -165,14 +164,12 @@
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  // ---- Atualizar total ----
   function atualizarTotal() {
     document.getElementById('totalProdutos').textContent =
       document.querySelectorAll('.produto-card').length;
   }
   atualizarTotal();
 
-  // ---- Abrir modal ao clicar em editar ----
   document.getElementById('listaProdutos').addEventListener('click', function(e) {
     const btn  = e.target.closest('.btn-editar-qtd');
     const card = e.target.closest('.produto-card');
@@ -195,7 +192,6 @@
     setTimeout(function() { document.getElementById('inputQtdModal').focus(); }, 400);
   }
 
-  // ---- Salvar quantidade ----
   document.getElementById('btnSalvarQtd').addEventListener('click', function() {
     if (!produtoAtual) return;
     const qt = document.getElementById('inputQtdModal').value;
@@ -214,7 +210,6 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok) {
-        // Atualiza card na tela
         const cardEl = document.getElementById('card-' + CSS.escape(produtoAtual.codigo_produto));
         if (cardEl) {
           const cardDiv = cardEl.querySelector('.produto-card');
@@ -229,14 +224,13 @@
         showToast(data.msg, false);
       }
     })
-    .catch(function() { showToast('Erro de comunicacao.', false); });
+    .catch(function() { showToast('Erro de comunicação.', false); });
   });
 
-  // ---- Filtrar lista ----
   document.getElementById('btnFiltrar').addEventListener('click', carregarLista);
 
   function carregarLista() {
-    const idCliente = document.getElementById('selCliente').value;
+    const idCliente = document.getElementById('hidCliente').value;
     const dtColeta  = document.getElementById('selData').value;
     if (!idCliente) return;
 
@@ -257,21 +251,19 @@
     .catch(function() { lista.innerHTML = '<div class="col-12 text-danger text-center py-4">Erro ao carregar lista.</div>'; });
   }
 
-  // ---- Camera na lista (atalho) ----
   initScanner({
     btnAbrir:  'btnCameraLista',
     btnFechar: 'btnFecharCameraLista',
     container: 'readerContainerLista',
     readerId:  'readerLista',
     onDecode: function(codigo) {
-      const idCliente = document.getElementById('selCliente').value;
-      if (!idCliente) { showToast('Selecione um cliente.', false); return; }
+      const idCliente = document.getElementById('hidCliente').value;
+      if (!idCliente) { showToast('Cliente não selecionado.', false); return; }
 
       fetch('/api/produtos/buscar?id_cliente=' + idCliente + '&codigo=' + encodeURIComponent(codigo))
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.ok) {
-          // Rola ate o card e abre modal
           const cardEl = document.getElementById('card-' + CSS.escape(data.produto.codigo_produto));
           if (cardEl) {
             cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -286,3 +278,4 @@
   });
 })();
 </script>
+<% } %>

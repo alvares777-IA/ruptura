@@ -1,0 +1,26 @@
+<% title = 'Selecionar Cliente'; activeMenu = '/produtos/' + destino; %>
+
+<div class="d-flex align-items-center gap-2 mb-1">
+  <i class="bi bi-person-check text-primary fs-5"></i>
+  <div>
+    <h6 class="mb-0 fw-bold">Selecionar Cliente</h6>
+    <div class="text-muted small"><%= destino === 'registro' ? 'Registro de Produtos' : 'Lista do Dia' %></div>
+  </div>
+</div>
+
+<hr class="my-2">
+
+<div class="d-grid gap-2">
+  <% clientes.forEach(function(c) { %>
+  <a href="/produtos/<%= destino %>?id_cliente=<%= c.id_cliente %>"
+     class="btn btn-outline-primary btn-lg text-start py-3">
+    <i class="bi bi-person me-2"></i><%= c.nome %>
+  </a>
+  <% }); %>
+  <% if (clientes.length === 0) { %>
+  <div class="text-center text-muted py-4">
+    <i class="bi bi-person-x fs-1 opacity-25 d-block mb-2"></i>
+    Nenhum cliente disponível.
+  </div>
+  <% } %>
+</div>
