@@ -17,6 +17,15 @@ async function fetchClientes(req) {
   `, [req.user.id_usuario]);
 }
 
+function localDateISO(offsetDays = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // ===================== SELEÇÃO DE CLIENTE =====================
 
 router.get('/selecionar', async (req, res, next) => {
@@ -24,9 +33,30 @@ router.get('/selecionar', async (req, res, next) => {
     const clientesQ = await fetchClientes(req);
     const destino = ['registro', 'lista'].includes(req.query.destino) ? req.query.destino : 'registro';
     if (clientesQ.rows.length === 1) {
-      return res.redirect(`/produtos/${destino}?id_cliente=${clientesQ.rows[0].id_cliente}`);
+      const id = clientesQ.rows[0].id_cliente;
+      const redir = destino === 'lista'
+        ? `/produtos/selecionar-data?id_cliente=${id}`
+        : `/produtos/${destino}?id_cliente=${id}`;
+      return res.redirect(redir);
     }
     res.render('produtos/selecionar', { clientes: clientesQ.rows, destino });
+  } catch (err) { next(err); }
+});
+
+// ===================== SELEÇÃO DE DATA (lista) =====================
+
+router.get('/selecionar-data', async (req, res, next) => {
+  try {
+    const clientesQ = await fetchClientes(req);
+    const cliente = clientesQ.rows.find(c => c.id_cliente == req.query.id_cliente) || null;
+    if (!cliente) return res.redirect('/produtos/selecionar?destino=lista');
+
+    res.render('produtos/selecionar_data', {
+      cliente,
+      clienteUnico: clientesQ.rows.length === 1,
+      hoje:  localDateISO(0),
+      ontem: localDateISO(-1),
+    });
   } catch (err) { next(err); }
 });
 
@@ -68,6 +98,12 @@ router.get('/lista', requireMenu('/produtos/lista'), async (req, res, next) => {
       if (!cliente) return res.redirect('/produtos/selecionar?destino=lista');
     }
 
+    if (cliente && !req.query.dt_coleta) {
+      return res.redirect(`/produtos/selecionar-data?id_cliente=${cliente.id_cliente}`);
+    }
+
+    const dtColeta = req.query.dt_coleta || localDateISO(0);
+
     let produtos = [];
     if (cliente) {
       const q = await pool.query(`
@@ -75,14 +111,19 @@ router.get('/lista', requireMenu('/produtos/lista'), async (req, res, next) => {
         FROM produtos_coletados p
         JOIN usuarios u ON u.id_usuario = p.id_usuario
         WHERE p.id_cliente = $1
-          AND p.dt_coleta = CURRENT_DATE
+          AND p.dt_coleta = $4
           AND ($2 OR p.id_usuario = $3)
         ORDER BY p.created_at DESC
-      `, [cliente.id_cliente, req.user.admin, req.user.id_usuario]);
+      `, [cliente.id_cliente, req.user.admin, req.user.id_usuario, dtColeta]);
       produtos = q.rows;
     }
 
-    res.render('produtos/lista', { cliente, clienteUnico: rows.length === 1, produtos });
+    res.render('produtos/lista', {
+      cliente,
+      clienteUnico: rows.length === 1,
+      dtColeta,
+      produtos,
+    });
   } catch (err) { next(err); }
 });
 

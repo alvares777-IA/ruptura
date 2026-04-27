@@ -8,7 +8,7 @@
 
 <!-- Cabeçalho compacto -->
 <div class="d-flex align-items-center justify-content-between mb-2 gap-2 flex-wrap">
-  <div class="d-flex align-items-center gap-2">
+  <div class="d-flex align-items-center gap-1 flex-wrap">
     <i class="bi bi-list-check text-primary fs-5"></i>
     <h6 class="mb-0 fw-bold">Lista do Dia</h6>
     <span class="badge bg-primary bg-opacity-10 text-primary py-1 px-2">
@@ -20,17 +20,17 @@
       <i class="bi bi-arrow-left-right"></i>
     </a>
     <% } %>
+    <span class="badge bg-secondary bg-opacity-10 text-dark py-1 px-2">
+      <i class="bi bi-calendar me-1"></i><%= dtColeta.split('-').reverse().join('/') %>
+    </span>
+    <a href="/produtos/selecionar-data?id_cliente=<%= cliente.id_cliente %>"
+       class="btn btn-outline-secondary btn-sm py-0 px-2" title="Trocar data">
+      <i class="bi bi-arrow-left-right"></i>
+    </a>
   </div>
-  <div class="d-flex align-items-center gap-1">
-    <input type="date" id="selData" class="form-control form-control-sm"
-           style="width:140px" value="<%= new Date().toISOString().split('T')[0] %>">
-    <button id="btnFiltrar" class="btn btn-primary btn-sm" title="Filtrar">
-      <i class="bi bi-search"></i>
-    </button>
-    <button class="btn btn-outline-primary btn-sm" id="btnCameraLista" title="Escanear para buscar produto">
-      <i class="bi bi-camera-fill"></i>
-    </button>
-  </div>
+  <button class="btn btn-outline-primary btn-sm" id="btnCameraLista" title="Escanear para buscar produto">
+    <i class="bi bi-camera-fill"></i>
+  </button>
 </div>
 
 <!-- Reader câmera (lista) -->
@@ -226,30 +226,6 @@
     })
     .catch(function() { showToast('Erro de comunicação.', false); });
   });
-
-  document.getElementById('btnFiltrar').addEventListener('click', carregarLista);
-
-  function carregarLista() {
-    const idCliente = document.getElementById('hidCliente').value;
-    const dtColeta  = document.getElementById('selData').value;
-    if (!idCliente) return;
-
-    const lista = document.getElementById('listaProdutos');
-    lista.innerHTML = '<div class="col-12 text-center py-4"><div class="spinner-border text-primary"></div></div>';
-
-    fetch('/api/produtos/lista?id_cliente=' + idCliente + (dtColeta ? '&dt_coleta=' + dtColeta : ''))
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      lista.innerHTML = '';
-      if (!data.ok || data.produtos.length === 0) {
-        lista.innerHTML = '<div class="col-12 text-center text-muted py-5"><i class="bi bi-inbox fs-1 opacity-25 d-block mb-2"></i>Nenhum produto encontrado.</div>';
-      } else {
-        data.produtos.forEach(function(p) { lista.appendChild(renderCard(p)); });
-      }
-      atualizarTotal();
-    })
-    .catch(function() { lista.innerHTML = '<div class="col-12 text-danger text-center py-4">Erro ao carregar lista.</div>'; });
-  }
 
   initScanner({
     btnAbrir:  'btnCameraLista',

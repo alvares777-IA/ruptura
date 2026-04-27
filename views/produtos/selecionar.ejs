@@ -12,7 +12,7 @@
 
 <div class="d-grid gap-2">
   <% clientes.forEach(function(c) { %>
-  <a href="/produtos/<%= destino %>?id_cliente=<%= c.id_cliente %>"
+  <a href="<%= destino === 'lista' ? '/produtos/selecionar-data?id_cliente=' + c.id_cliente : '/produtos/' + destino + '?id_cliente=' + c.id_cliente %>"
      class="btn btn-outline-primary btn-lg text-start py-3">
     <i class="bi bi-person me-2"></i><%= c.nome %>
   </a>

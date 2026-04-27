@@ -1,0 +1,51 @@
+<% title = 'Selecionar Data'; activeMenu = '/produtos/lista'; %>
+
+<div class="d-flex align-items-center gap-2 mb-1">
+  <i class="bi bi-calendar-check text-primary fs-5"></i>
+  <div>
+    <h6 class="mb-0 fw-bold">Selecionar Data</h6>
+    <div class="text-muted small"><i class="bi bi-person me-1"></i><%= cliente.nome %></div>
+  </div>
+</div>
+
+<hr class="my-2">
+
+<div class="d-grid gap-2 mb-3">
+  <a href="/produtos/lista?id_cliente=<%= cliente.id_cliente %>&dt_coleta=<%= hoje %>"
+     class="btn btn-primary btn-lg">
+    <i class="bi bi-calendar-day me-2"></i>Hoje &mdash; <%= hoje.split('-').reverse().join('/') %>
+  </a>
+  <a href="/produtos/lista?id_cliente=<%= cliente.id_cliente %>&dt_coleta=<%= ontem %>"
+     class="btn btn-outline-secondary btn-lg">
+    <i class="bi bi-calendar-minus me-2"></i>Ontem &mdash; <%= ontem.split('-').reverse().join('/') %>
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-2">
+    <label class="form-label small fw-semibold mb-1">Outra data</label>
+    <div class="input-group">
+      <input type="date" id="inputData" class="form-control" value="<%= hoje %>">
+      <button class="btn btn-primary" id="btnConfirmar" type="button">
+        <i class="bi bi-arrow-right-circle"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('btnConfirmar');
+  const inp = document.getElementById('inputData');
+  const idCliente = '<%= cliente.id_cliente %>';
+
+  btn.addEventListener('click', function () {
+    const dt = inp.value;
+    if (dt) window.location.href = '/produtos/lista?id_cliente=' + idCliente + '&dt_coleta=' + dt;
+  });
+
+  inp.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') btn.click();
+  });
+})();
+</script>
