@@ -31,6 +31,12 @@ router.post('/produtos/validar', async (req, res) => {
     }
     const cliente = cliQ.rows[0];
 
+    const qt = qt_coletada ? parseFloat(qt_coletada) : null;
+    console.log('\n--- produtos_coletados INSERT (teste manual) ---');
+    console.log(`SELECT * FROM clientes WHERE id_cliente=${id_cliente} AND ativo=true;`);
+    console.log(`INSERT INTO produtos_coletados (id_cliente,codigo_produto,dt_coleta,id_usuario,qt_coletada,descricao,erp_validado,erp_dados,updated_at) VALUES (${id_cliente},'${codigo}',CURRENT_DATE,${req.user.id_usuario},${qt ?? 'NULL'},'<descricao_erp>',true,'{}',NOW()) ON CONFLICT (id_cliente,codigo_produto,dt_coleta,id_usuario) DO UPDATE SET qt_coletada=EXCLUDED.qt_coletada,descricao=EXCLUDED.descricao,erp_validado=true,erp_dados=EXCLUDED.erp_dados,updated_at=NOW();`);
+    console.log('------------------------------------------------\n');
+
     let produto;
     try {
       produto = await buscarProduto(cliente, codigo);
@@ -43,12 +49,6 @@ router.post('/produtos/validar', async (req, res) => {
       return res.status(404).json({ ok: false, msg: 'Produto nao encontrado no ERP.' });
     }
 
-    const qt = qt_coletada ? parseFloat(qt_coletada) : null;
-    const params = [id_cliente, codigo, req.user.id_usuario, qt, produto.descricao, JSON.stringify(produto.dados)];
-    console.log('\n--- produtos_coletados UPSERT ---');
-    console.log('Params:', params);
-    console.log('psql:', `INSERT INTO produtos_coletados (id_cliente,codigo_produto,dt_coleta,id_usuario,qt_coletada,descricao,erp_validado,erp_dados,updated_at) VALUES (${params[0]},'${params[1]}',CURRENT_DATE,${params[2]},${params[3] ?? 'NULL'},'${String(params[4]).replace(/'/g,"''")}',true,'${String(params[5]).replace(/'/g,"''")}',NOW()) ON CONFLICT (id_cliente,codigo_produto,dt_coleta,id_usuario) DO UPDATE SET qt_coletada=EXCLUDED.qt_coletada,descricao=EXCLUDED.descricao,erp_validado=true,erp_dados=EXCLUDED.erp_dados,updated_at=NOW();`);
-    console.log('---------------------------------\n');
     await pool.query(`
       INSERT INTO produtos_coletados
         (id_cliente, codigo_produto, dt_coleta, id_usuario, qt_coletada, descricao, erp_validado, erp_dados, updated_at)
