@@ -235,6 +235,25 @@ router.post('/clientes/:id', requireMenu('/admin/clientes'), async (req, res, ne
   } catch (err) { next(err); }
 });
 
+router.delete('/clientes/:id', requireMenu('/admin/clientes'), async (req, res, next) => {
+  const id = req.params.id;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM permissao_cliente  WHERE id_cliente=$1', [id]);
+    await client.query('DELETE FROM produtos_coletados WHERE id_cliente=$1', [id]);
+    await client.query('DELETE FROM clientes           WHERE id_cliente=$1', [id]);
+    await client.query('COMMIT');
+    return res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Erro ao excluir cliente:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro ao excluir cliente.' });
+  } finally {
+    client.release();
+  }
+});
+
 // ===================== PERMISSOES =====================
 
 router.get('/permissoes', (req, res) => res.redirect('/admin/usuarios'));
