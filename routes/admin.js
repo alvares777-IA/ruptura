@@ -181,13 +181,16 @@ router.get('/clientes', requireMenu('/admin/clientes'), async (req, res, next) =
 router.post('/clientes', requireMenu('/admin/clientes'), async (req, res, next) => {
   try {
     const { nome, tipo_conexao, host, porta, banco_dados, schema_bd, sid,
-            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto, id_bandeira } = req.body;
+            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto,
+            id_bandeira, id_loja } = req.body;
     await pool.query(`
       INSERT INTO clientes (nome, tipo_conexao, host, porta, banco_dados, schema_bd, sid,
-                            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto, id_bandeira)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+                            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto,
+                            id_bandeira, id_loja)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
     `, [nome, tipo_conexao, host, porta || null, banco_dados, schema_bd, sid,
-        usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto, id_bandeira || null]);
+        usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto,
+        id_bandeira || null, parseInt(id_loja) || 1]);
     req.session.flash = { tipo: 'success', msg: 'Cliente cadastrado.' };
     res.redirect('/admin/clientes');
   } catch (err) { next(err); }
@@ -203,28 +206,28 @@ router.post('/clientes/:id/toggle', requireMenu('/admin/clientes'), async (req, 
 router.post('/clientes/:id', requireMenu('/admin/clientes'), async (req, res, next) => {
   try {
     const { nome, tipo_conexao, host, porta, banco_dados, schema_bd, sid,
-            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto, id_bandeira } = req.body;
+            usuario_bd, senha_bd, endpoint_url, endpoint_token, query_produto,
+            id_bandeira, id_loja } = req.body;
+    const idLoja = parseInt(id_loja) || 1;
 
     if (senha_bd && senha_bd.trim() !== '') {
-      // Nova senha informada — atualiza tudo incluindo senha_bd
       await pool.query(`
         UPDATE clientes SET nome=$1, tipo_conexao=$2, host=$3, porta=$4, banco_dados=$5,
           schema_bd=$6, sid=$7, usuario_bd=$8, senha_bd=$9, endpoint_url=$10,
-          endpoint_token=$11, query_produto=$12, id_bandeira=$13
-        WHERE id_cliente=$14
+          endpoint_token=$11, query_produto=$12, id_bandeira=$13, id_loja=$14
+        WHERE id_cliente=$15
       `, [nome, tipo_conexao, host, porta || null, banco_dados, schema_bd, sid,
           usuario_bd, senha_bd.trim(), endpoint_url, endpoint_token, query_produto,
-          id_bandeira || null, req.params.id]);
+          id_bandeira || null, idLoja, req.params.id]);
     } else {
-      // Campo senha vazio — mantém a senha existente no banco
       await pool.query(`
         UPDATE clientes SET nome=$1, tipo_conexao=$2, host=$3, porta=$4, banco_dados=$5,
           schema_bd=$6, sid=$7, usuario_bd=$8, endpoint_url=$9,
-          endpoint_token=$10, query_produto=$11, id_bandeira=$12
-        WHERE id_cliente=$13
+          endpoint_token=$10, query_produto=$11, id_bandeira=$12, id_loja=$13
+        WHERE id_cliente=$14
       `, [nome, tipo_conexao, host, porta || null, banco_dados, schema_bd, sid,
           usuario_bd, endpoint_url, endpoint_token, query_produto,
-          id_bandeira || null, req.params.id]);
+          id_bandeira || null, idLoja, req.params.id]);
     }
 
     req.session.flash = { tipo: 'success', msg: 'Cliente atualizado.' };

@@ -29,6 +29,7 @@
             <% if (c.sid) { %>
             <div class="small text-muted">SID: <%= c.sid %><% if (c.schema_bd) { %> | Schema: <%= c.schema_bd %><% } %></div>
             <% } %>
+            <div class="small text-muted">Loja: <%= c.id_loja ?? 1 %><% if (c.id_bandeira) { %> | Bandeira: <%= c.id_bandeira %><% } %></div>
           </div>
           <div class="d-flex flex-column gap-1">
             <button class="btn btn-outline-primary btn-sm p-1" title="Editar"
@@ -120,9 +121,13 @@
               </div>
             </div>
 
-            <div class="col-12 col-md-4">
-              <label class="form-label">ID Bandeira <small class="text-muted">(parametro :2 / $2)</small></label>
-              <input type="text" name="id_bandeira" id="cliIdBandeira" class="form-control" placeholder="Ex: 1, ATAC, 001">
+            <div class="col-6 col-md-2">
+              <label class="form-label">ID Loja</label>
+              <input type="number" name="id_loja" id="cliIdLoja" class="form-control" value="1" min="1" required>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label">ID Bandeira <small class="text-muted">(:2/$2)</small></label>
+              <input type="text" name="id_bandeira" id="cliIdBandeira" class="form-control" placeholder="Ex: 1">
             </div>
 
             <div class="col-12 col-md-8">
@@ -178,6 +183,7 @@
       document.getElementById('cliEndpointUrl').value   = c.endpoint_url || '';
       document.getElementById('cliEndpointToken').value = c.endpoint_token || '';
       document.getElementById('cliQuery').value         = c.query_produto || '';
+      document.getElementById('cliIdLoja').value        = c.id_loja ?? 1;
       document.getElementById('cliIdBandeira').value    = c.id_bandeira || '';
     }
     toggleCampos();
