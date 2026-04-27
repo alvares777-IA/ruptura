@@ -165,6 +165,26 @@ router.delete('/produtos', async (req, res) => {
   }
 });
 
+// GET /api/produtos/detalhe?id_cliente=&codigo_produto=&dt_coleta=&id_usuario=
+router.get('/produtos/detalhe', async (req, res) => {
+  const { id_cliente, codigo_produto, dt_coleta, id_usuario } = req.query;
+  const targetUser = req.user.admin ? (id_usuario || req.user.id_usuario) : req.user.id_usuario;
+
+  try {
+    const q = await pool.query(`
+      SELECT * FROM produtos_coletados
+      WHERE id_cliente=$1 AND codigo_produto=$2 AND dt_coleta=$3 AND id_usuario=$4
+      LIMIT 1
+    `, [id_cliente, codigo_produto, dt_coleta, targetUser]);
+
+    if (q.rows.length === 0) return res.json({ ok: false, msg: 'Registro não encontrado.' });
+    return res.json({ ok: true, produto: q.rows[0] });
+  } catch (err) {
+    console.error('Erro ao buscar detalhe:', err.message);
+    return res.status(500).json({ ok: false, msg: 'Erro interno.' });
+  }
+});
+
 // GET /api/produtos/lista?id_cliente=&dt_coleta=
 router.get('/produtos/lista', async (req, res) => {
   const { id_cliente, dt_coleta } = req.query;

@@ -203,27 +203,55 @@
   }
 
   function abrirModalQtd(card) {
-    produtoAtual = {
-      codigo_produto: card.dataset.codigo,
-      descricao:      card.dataset.descricao,
-      id_cliente:     card.dataset.idCliente,
-      dt_coleta:      card.dataset.dtColeta,
-      id_usuario:     card.dataset.idUsuario,
-      qt_atual:       card.dataset.qt,
-      ao_coletado:    card.dataset.aoColetado || 'N',
-    };
-    document.getElementById('qtdCodigo').textContent    = produtoAtual.codigo_produto;
-    document.getElementById('qtdDescricao').textContent = produtoAtual.descricao;
-    const qtRaw = produtoAtual.qt_atual;
-    document.getElementById('inputQtdModal').value =
-      (qtRaw !== '' && qtRaw !== 'null' && qtRaw !== null)
-        ? String(parseFloat(qtRaw)).replace('.', ',')
-        : '';
-    document.getElementById('chkAoColetado').checked    = produtoAtual.ao_coletado === 'S';
+    const idCliente = card.dataset.idCliente;
+    const codigo    = card.dataset.codigo;
+    const dtColeta  = card.dataset.dtColeta;
+    const idUsuario = card.dataset.idUsuario;
+
+    produtoAtual = null;
+    document.getElementById('qtdCodigo').textContent    = codigo;
+    document.getElementById('qtdDescricao').textContent = card.dataset.descricao;
+    document.getElementById('inputQtdModal').value      = '';
+    document.getElementById('inputQtdModal').disabled   = true;
+    document.getElementById('chkAoColetado').checked    = false;
+    document.getElementById('chkAoColetado').disabled   = true;
+    document.getElementById('btnSalvarQtd').disabled    = true;
     document.getElementById('confirmExcluir').classList.add('d-none');
     document.getElementById('btnExcluirProduto').classList.remove('d-none');
     modal.show();
-    setTimeout(function() { document.getElementById('inputQtdModal').focus(); }, 400);
+
+    fetch('/api/produtos/detalhe?' + new URLSearchParams({
+      id_cliente:     idCliente,
+      codigo_produto: codigo,
+      dt_coleta:      dtColeta,
+      id_usuario:     idUsuario,
+    }))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (!data.ok) { showToast(data.msg, false); modal.hide(); return; }
+      const p = data.produto;
+      const dtStr = String(p.dt_coleta).split('T')[0];
+
+      produtoAtual = {
+        codigo_produto: p.codigo_produto,
+        descricao:      p.descricao,
+        id_cliente:     String(p.id_cliente),
+        dt_coleta:      dtStr,
+        id_usuario:     String(p.id_usuario),
+        ao_coletado:    p.ao_coletado || 'N',
+      };
+
+      document.getElementById('qtdDescricao').textContent = p.descricao;
+      const qtRaw = p.qt_coletada !== null && p.qt_coletada !== undefined ? String(p.qt_coletada) : '';
+      document.getElementById('inputQtdModal').value =
+        qtRaw !== '' ? String(parseFloat(qtRaw)).replace('.', ',') : '';
+      document.getElementById('chkAoColetado').checked  = produtoAtual.ao_coletado === 'S';
+      document.getElementById('inputQtdModal').disabled = false;
+      document.getElementById('chkAoColetado').disabled = false;
+      document.getElementById('btnSalvarQtd').disabled  = false;
+      document.getElementById('inputQtdModal').focus();
+    })
+    .catch(function() { showToast('Erro ao carregar dados.', false); modal.hide(); });
   }
 
   // Salvar quantidade + ao_coletado
@@ -247,7 +275,7 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok) {
-        const cardEl = document.getElementById('card-' + CSS.escape(produtoAtual.codigo_produto));
+        const cardEl = document.getElementById('card-' + produtoAtual.codigo_produto);
         if (cardEl) {
           const cardDiv = cardEl.querySelector('.produto-card');
           cardDiv.dataset.qt = qt;
@@ -293,7 +321,7 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.ok) {
-        const cardEl = document.getElementById('card-' + CSS.escape(produtoAtual.codigo_produto));
+        const cardEl = document.getElementById('card-' + produtoAtual.codigo_produto);
         if (cardEl) cardEl.remove();
         atualizarTotal();
         showToast('Registro excluído.', true);
@@ -318,7 +346,7 @@
       .then(function(r) { return r.json(); })
       .then(function(data) {
         if (data.ok) {
-          const cardEl = document.getElementById('card-' + CSS.escape(data.produto.codigo_produto));
+          const cardEl = document.getElementById('card-' + data.produto.codigo_produto);
           if (cardEl) {
             cardEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setTimeout(function() { abrirModalQtd(cardEl.querySelector('.produto-card')); }, 400);
