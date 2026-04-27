@@ -1,7 +1,9 @@
 <%
   const qt = p.qt_coletada !== null && p.qt_coletada !== undefined
     ? parseFloat(p.qt_coletada).toLocaleString('pt-BR') : '—';
-  const dtStr = p.dt_coleta ? String(p.dt_coleta).split('T')[0] : '';
+  const dtStr = p.dt_coleta
+    ? (p.dt_coleta instanceof Date ? p.dt_coleta.toISOString().split('T')[0] : String(p.dt_coleta).split('T')[0])
+    : '';
   const aoColetado = p.ao_coletado || 'N';
 %>
 <div class="col-12 col-md-6 col-lg-4" id="card-<%= p.codigo_produto %>">
